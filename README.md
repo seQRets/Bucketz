@@ -1,6 +1,6 @@
-# Portfolio Tracker
+# Bucketz 🪣
 
-A single-file investment portfolio tracker for modeling a multi-bucket retirement allocation, with per-holding tax-aware income calculations and long-horizon growth projections.
+**Portfolio Tracker** — a single-file investment portfolio tracker for modeling a multi-bucket retirement allocation, with per-holding tax-aware income calculations and long-horizon growth projections.
 
 No build step, no dependencies, no server. Open `index.html` in any modern browser and the app runs locally; all data persists to your browser's `localStorage`.
 
