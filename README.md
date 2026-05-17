@@ -2,6 +2,9 @@
 
 A single-file investment portfolio tracker for modeling a multi-bucket retirement allocation, with per-holding tax-aware income calculations and long-horizon growth projections.
 
+> [!WARNING]
+> **Not financial advice.** Bucketz is a research and planning tool. It performs the calculations you ask it to using the numbers you enter — nothing more. It does not account for your full financial situation, does not guarantee any outcome, and should not be used as the sole basis for investment, tax, or retirement decisions. Tax brackets, rules, and account regulations change over time; figures shown in the app reflect 2025 assumptions and may be out of date. Consult a licensed financial advisor, CPA, or tax professional before acting on anything you see here.
+
 No build step, no dependencies, no server. Open `index.html` in any modern browser and the app runs locally; all data persists to your browser's `localStorage`.
 
 ## Running it
