@@ -1,4 +1,4 @@
-# Bucketz Portfolio Tracker 🪣
+# 🪣 Bucketz Portfolio Tracker
 
 A single-file investment portfolio tracker for modeling a multi-bucket retirement allocation, with per-holding tax-aware income calculations and long-horizon growth projections.
 
