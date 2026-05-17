@@ -375,6 +375,7 @@
     font-size: 13px;
   }
   table.holdings td.income { color: var(--accent); font-size: 12px; }
+  table.holdings td.income .info { margin-left: 0; margin-right: 6px; }
   table.holdings td.income .tax-free { color: var(--accent); }
   table.holdings td.income .taxable { color: var(--warn); }
   table.holdings td.income .hsa-excluded { color: var(--muted); font-style: italic; }
@@ -711,6 +712,7 @@
     font-variant-numeric: tabular-nums;
   }
   table.account-holdings td.income { color: var(--accent); font-size: 12px; }
+  table.account-holdings td.income .info { margin-left: 0; margin-right: 6px; }
   table.account-holdings td.income .tax-free { color: var(--accent); }
   table.account-holdings td.income .taxable { color: var(--warn); }
   table.account-holdings td.income .hsa-excluded { color: var(--muted); font-style: italic; }
@@ -836,7 +838,7 @@
   </div>
 
   <div class="view-toggle" id="viewToggle">
-    <button data-view="buckets">Buckets</button>
+    <button data-view="buckets">Bucketz</button>
     <button data-view="accounts">Accounts</button>
   </div>
 
@@ -1685,7 +1687,7 @@ function refresh() {
       }
       const incomeSpan = row.querySelector('[data-display="income"]');
       if (isHsa) {
-        incomeSpan.innerHTML = fmt(hIncome) + '/yr <span class="info info-right">?<span class="tip">HSA income is locked until age 65 (or qualified medical expenses) and is <strong>not available for daily expenses</strong>, so it isn\'t counted toward your spendable totals.</span></span>';
+        incomeSpan.innerHTML = '<span class="info info-right">?<span class="tip">HSA income is locked until age 65 (or qualified medical expenses) and is <strong>not available for daily expenses</strong>, so it isn\'t counted toward your spendable totals.</span></span>' + fmt(hIncome) + '/yr';
       } else {
         incomeSpan.textContent = fmt(hIncome) + "/yr";
       }
@@ -1841,7 +1843,7 @@ function refresh() {
         if (incSpan) {
           const isHsaRow = acc === "hsa";
           if (isHsaRow) {
-            incSpan.innerHTML = fmt(hIncome) + '/yr <span class="info info-right">?<span class="tip">HSA income is locked until age 65 (or qualified medical expenses) and is <strong>not available for daily expenses</strong>, so it isn\'t counted toward your spendable totals.</span></span>';
+            incSpan.innerHTML = '<span class="info info-right">?<span class="tip">HSA income is locked until age 65 (or qualified medical expenses) and is <strong>not available for daily expenses</strong>, so it isn\'t counted toward your spendable totals.</span></span>' + fmt(hIncome) + '/yr';
           } else {
             incSpan.textContent = fmt(hIncome) + "/yr";
           }
