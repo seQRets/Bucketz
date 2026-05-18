@@ -329,6 +329,14 @@
     margin-bottom: 12px;
   }
   .bucket-name { font-size: 17px; font-weight: 600; }
+  .bucket-name .bucket-target {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+    margin-left: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  .bucket-name .bucket-target:empty { display: none; }
   .bucket-name .desc {
     display: block; color: var(--muted); font-weight: 400;
     font-size: 12px; margin-top: 2px;
@@ -1155,6 +1163,24 @@ const fmtPct = n => n.toFixed(2) + "%";
 
 const $ = id => document.getElementById(id);
 
+function scaleHoldingsForTotalChange(oldTotal, newTotal) {
+  if (oldTotal <= 0 || newTotal <= 0) return;
+  const cashB = state.buckets.find(b => b.allocMode === "dollar");
+  const oldCash = cashB ? Math.min(cashB.allocValue, oldTotal) : 0;
+  const newCash = cashB ? Math.min(cashB.allocValue, newTotal) : 0;
+  const oldInvest = oldTotal - oldCash;
+  const newInvest = newTotal - newCash;
+  if (oldInvest <= 0 || newInvest <= 0) return;
+  const ratio = newInvest / oldInvest;
+  if (!isFinite(ratio) || ratio === 1) return;
+  state.buckets.forEach(bucket => {
+    if (bucket.allocMode === "dollar") return; // cash stays put
+    bucket.holdings.forEach(h => {
+      h.amount = (h.amount || 0) * ratio;
+    });
+  });
+}
+
 function bucketAmount(bucket, total, cashAmt) {
   if (bucket.allocMode === "dollar") {
     return Math.min(bucket.allocValue, total);
@@ -1209,7 +1235,7 @@ function buildDom() {
         </div>
       </div>` : "";
     head.innerHTML = `
-      <div class="bucket-name">${bucket.name}<span class="desc">${bucket.desc}</span></div>
+      <div class="bucket-name">${bucket.name}<span class="bucket-target" data-display="bucketTarget"></span><span class="desc">${bucket.desc}</span></div>
       ${spendingCell}
       <div class="alloc-control">
         ${bucket.allocMode === "dollar"
@@ -1642,6 +1668,16 @@ function refresh() {
       bucketEl.querySelector('[data-display="bucketYield"]').textContent = fmtPct(y);
       bucketEl.querySelector('[data-display="bucketAmount"]').textContent = fmt(bucketActual);
       bucketEl.querySelector('[data-display="bucketIncome"]').textContent = fmt(bucketIncomeActual) + "/yr";
+      const targetSpan = bucketEl.querySelector('[data-display="bucketTarget"]');
+      if (targetSpan) {
+        if (bucket.allocMode === "dollar" || bucketTarget <= 0) {
+          targetSpan.textContent = "";
+          targetSpan.style.display = "none";
+        } else {
+          targetSpan.textContent = fmt(bucketTarget) + " available";
+          targetSpan.style.display = "";
+        }
+      }
 
       const allocInput = bucketEl.querySelector('input[data-field="allocValue"]');
       if (allocInput && document.activeElement !== allocInput) {
@@ -1917,6 +1953,23 @@ function reformatCommasInPlace(t) {
   }
 }
 
+let totalEditAnchor = null;
+document.addEventListener("focusin", e => {
+  if (e.target.id === "total") {
+    totalEditAnchor = state.total;
+  }
+});
+document.addEventListener("change", e => {
+  if (e.target.id === "total" && totalEditAnchor !== null) {
+    const newTotal = state.total;
+    if (newTotal !== totalEditAnchor) {
+      scaleHoldingsForTotalChange(totalEditAnchor, newTotal);
+      refresh();
+    }
+    totalEditAnchor = null;
+  }
+});
+
 document.addEventListener("input", e => {
   const t = e.target;
   if (t.dataset.commas === "1") reformatCommasInPlace(t);
@@ -1939,6 +1992,8 @@ document.addEventListener("input", e => {
   const acctTarget = t.dataset.accountTarget;
   if (acctTarget) {
     state.accountTargets[acctTarget] = parseInputValue(t);
+    const sum = Object.values(state.accountTargets).reduce((a, v) => a + (v || 0), 0);
+    if (sum > 0) state.total = sum;
     refresh();
     return;
   }
