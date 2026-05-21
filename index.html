@@ -627,10 +627,10 @@
   .view-toggle {
     display: flex;
     justify-content: center;
-    gap: 6px;
+    gap: 8px;
     margin-bottom: 20px;
   }
-  .view-toggle button {
+  .view-pill {
     background: transparent;
     border: 1px solid var(--border);
     color: var(--muted);
@@ -642,11 +642,8 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
-  .view-toggle button:hover {
-    color: var(--accent);
-    border-color: var(--accent);
-  }
-  .view-toggle button.active {
+  .view-pill:hover { color: var(--accent); border-color: var(--accent); }
+  .view-pill.active {
     background: var(--accent);
     color: #0f1115;
     border-color: var(--accent);
@@ -724,13 +721,15 @@
   table.account-holdings td.income .tax-free { color: var(--accent); }
   table.account-holdings td.income .taxable { color: var(--warn); }
   table.account-holdings td.income .hsa-excluded { color: var(--muted); font-style: italic; }
-  table.account-holdings .av-col-bucket { width: 14%; }
-  table.account-holdings .av-col-ticker { width: 14%; }
-  table.account-holdings .av-col-pct { width: 11%; }
+  table.account-holdings .av-col-bucket { width: 13%; }
+  table.account-holdings .av-col-ticker { width: 13%; }
+  table.account-holdings .av-col-pct { width: 9%; }
   table.account-holdings .av-col-yield { width: 11%; }
-  table.account-holdings .av-col-type { width: 14%; }
-  table.account-holdings .av-col-amt { width: 18%; }
-  table.account-holdings .av-col-inc { width: 18%; }
+  table.account-holdings .av-col-type { width: 13%; }
+  table.account-holdings .av-col-amt { width: 16%; }
+  table.account-holdings .av-col-inc { width: 16%; }
+  table.account-holdings .av-col-del { width: 9%; text-align: right; }
+  table.account-holdings td { padding: 4px 8px; }
   .av-bucket-badge {
     display: inline-block;
     background: var(--inner);
@@ -769,6 +768,92 @@
     font-size: 13px;
     text-align: center;
     line-height: 1.6;
+  }
+
+  /* Bucket summary (compact read-only summary above the projections panel) */
+  .bucket-summary-sub {
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 14px;
+    line-height: 1.5;
+  }
+  .bucket-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .bucket-summary-card {
+    background: var(--inner);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .bucket-summary-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .bucket-summary-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .bucket-summary-target {
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .bucket-summary-track {
+    height: 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .bucket-summary-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 4px;
+    transition: width 0.2s ease;
+  }
+  .bucket-summary-card.over .bucket-summary-fill { background: var(--warn); }
+  .bucket-summary-card.over .bucket-summary-target { color: var(--warn); }
+  .bucket-summary-stats {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 6px;
+  }
+  .bucket-summary-stats span.label {
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-right: 4px;
+    font-size: 9px;
+  }
+  .bucket-summary-stats span.val {
+    color: var(--text);
+  }
+  .bucket-summary-holdings {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bucket-summary-holdings.empty { font-style: italic; opacity: 0.6; }
+  .bucket-summary-empty {
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+    padding: 18px;
   }
 
   /* Tablet */
@@ -846,8 +931,8 @@
   </div>
 
   <div class="view-toggle" id="viewToggle">
-    <button data-view="buckets">Bucketz</button>
-    <button data-view="accounts">Accounts</button>
+    <button class="view-pill" data-view="accounts">Accounts</button>
+    <button class="view-pill" data-view="buckets">Bucketz</button>
   </div>
 
   <div class="panel">
@@ -982,6 +1067,12 @@
     <div class="note" id="globalNote"></div>
   </div>
 
+  <div class="panel" id="bucketSummaryPanel">
+    <h2>Bucket Summary</h2>
+    <div class="bucket-summary-sub">How holdings break down across your buckets. Read-only — edit holdings in the Account view above.</div>
+    <div class="bucket-summary-grid" id="bucketSummaryGrid"></div>
+  </div>
+
   <div class="panel projections-panel" id="projectionsPanel">
     <h2>Growth Projections</h2>
     <div class="panel-sub">Assumes income reinvests at the current portfolio yield; growth rate is the nominal total annual return. No withdrawals, no inflation adjustment.</div>
@@ -999,7 +1090,7 @@
     <div class="chart-container" id="projChartWrap">
       <svg id="projChart" viewBox="0 0 800 360" preserveAspectRatio="xMidYMid meet"></svg>
       <div class="proj-tooltip" id="projTooltip"></div>
-      <div class="proj-hint">Drag the slider above to change the horizon, or scroll on the chart. Hover for values.</div>
+      <div class="proj-hint">Drag the Years slider above to change the horizon. Hover for values.</div>
     </div>
     <div class="projections-empty" id="projEmpty" style="display:none">Enter a total portfolio and at least one yielding holding to see projections.</div>
   </div>
@@ -1021,7 +1112,7 @@ const state = {
   monthlySpending: 0,
   activePreset: null,
   presetNoteDismissed: null,
-  viewMode: "buckets",
+  viewMode: "accounts",
   accountTargets: { taxable: 0, traditional: 0, roth: 0, hsa: 0 },
   buckets: [
     {
@@ -1081,7 +1172,10 @@ const STRATEGY_TICKERS = ["STRC", "STRD", "STRK", "STRF", "MSTR"];
     if (typeof state.monthlySpending !== "number") state.monthlySpending = 0;
     if (state.activePreset && !PRESETS[state.activePreset]) state.activePreset = null;
     if (state.presetNoteDismissed === undefined) state.presetNoteDismissed = null;
-    if (state.viewMode !== "buckets" && state.viewMode !== "accounts") state.viewMode = "buckets";
+    if (state.viewMode !== "buckets" && state.viewMode !== "accounts") state.viewMode = "accounts";
+    // Strip out obsolete track flags from older saves
+    delete state.trackBuckets;
+    delete state.trackAccounts;
     if (!state.accountTargets || typeof state.accountTargets !== "object") {
       state.accountTargets = { taxable: 0, traditional: 0, roth: 0, hsa: 0 };
     }
@@ -1181,6 +1275,80 @@ function scaleHoldingsForTotalChange(oldTotal, newTotal) {
   });
 }
 
+function computeAcctUsed() {
+  const used = { taxable: 0, traditional: 0, roth: 0, hsa: 0 };
+  state.buckets.forEach(b => b.holdings.forEach(h => {
+    const k = h.account || "taxable";
+    if (used[k] !== undefined) used[k] += (h.amount || 0);
+  }));
+  return used;
+}
+
+function pickBestAccount() {
+  // Strict: never default to an account that's already at/over its target.
+  // Picks the account with the most remaining headroom among those with target > 0
+  // and remaining > 0. Falls back to "taxable" if no account qualifies.
+  const used = computeAcctUsed();
+  let best = null;
+  let maxRemaining = 0;
+  ["taxable", "traditional", "roth", "hsa"].forEach(acc => {
+    const target = state.accountTargets[acc] || 0;
+    if (target <= 0) return;
+    const remaining = target - used[acc];
+    if (remaining > maxRemaining) {
+      maxRemaining = remaining;
+      best = acc;
+    }
+  });
+  return best || "taxable";
+}
+
+function renderBucketSummary(bucketTargets, bucketActuals) {
+  const root = $("bucketSummaryGrid");
+  if (!root) return;
+
+  const visible = state.buckets.filter(b => {
+    const activeP = state.activePreset && PRESETS[state.activePreset];
+    if (b.id === "hypergrowth" && activeP && activeP.hypergrowth === 0) return false;
+    const target = bucketTargets[b.id] || 0;
+    const actual = bucketActuals[b.id] || 0;
+    return target > 0 || actual > 0 || b.holdings.length > 0;
+  });
+
+  if (visible.length === 0) {
+    root.innerHTML = `<div class="bucket-summary-empty">Add holdings or apply an allocation preset to see bucket targets here.</div>`;
+    return;
+  }
+
+  root.innerHTML = visible.map(b => {
+    const target = bucketTargets[b.id] || 0;
+    const actual = bucketActuals[b.id] || 0;
+    const pct = target > 0 ? Math.min(100, (actual / target) * 100) : (actual > 0 ? 100 : 0);
+    const over = target > 0 && actual - target > 0.5;
+    const y = bucketYield(b);
+    const income = b.holdings.reduce(
+      (a, h) => a + ((h.account === "hsa") ? 0 : (h.amount || 0) * h.yield / 100), 0
+    );
+    const tickers = b.holdings.map(h => h.ticker || "—").filter(Boolean);
+    const tickerText = tickers.length > 0 ? tickers.join(", ") : "no holdings yet";
+    const targetText = target > 0 ? fmt(actual) + " / " + fmt(target) : fmt(actual);
+    return `
+      <div class="bucket-summary-card ${over ? "over" : ""}">
+        <div class="bucket-summary-head">
+          <span class="bucket-summary-name">${b.name}</span>
+          <span class="bucket-summary-target">${targetText}</span>
+        </div>
+        <div class="bucket-summary-track"><div class="bucket-summary-fill" style="width:${pct.toFixed(1)}%"></div></div>
+        <div class="bucket-summary-stats">
+          <span><span class="label">Yield</span><span class="val">${fmtPct(y)}</span></span>
+          <span><span class="label">Income</span><span class="val">${fmt(income)}/yr</span></span>
+        </div>
+        <div class="bucket-summary-holdings ${tickers.length === 0 ? "empty" : ""}">${tickerText}</div>
+      </div>
+    `;
+  }).join("");
+}
+
 function bucketAmount(bucket, total, cashAmt) {
   if (bucket.allocMode === "dollar") {
     return Math.min(bucket.allocValue, total);
@@ -1190,7 +1358,7 @@ function bucketAmount(bucket, total, cashAmt) {
 }
 
 function bucketYield(bucket) {
-  const eligible = bucket.holdings.filter(h => h.account !== "hsa");
+  const eligible = bucket.holdings.filter(h => (h.account || "taxable") !== "hsa");
   const aSum = eligible.reduce((a, h) => a + (h.amount || 0), 0);
   if (aSum === 0) return 0;
   return eligible.reduce((a, h) => a + (h.amount || 0) * h.yield, 0) / aSum;
@@ -1405,6 +1573,11 @@ function buildAccountDom(root) {
       noHoldings.className = "account-view-empty";
       noHoldings.textContent = "No holdings assigned to this account yet.";
       el.appendChild(noHoldings);
+      const addBtnEmpty = document.createElement("button");
+      addBtnEmpty.className = "add";
+      addBtnEmpty.textContent = "+ Add holding";
+      addBtnEmpty.dataset.addAccount = acc.id;
+      el.appendChild(addBtnEmpty);
       root.appendChild(el);
       return;
     }
@@ -1423,6 +1596,7 @@ function buildAccountDom(root) {
           <th class="av-col-type">Income Type</th>
           <th class="av-col-amt num">Amount</th>
           <th class="av-col-inc num">Income</th>
+          <th class="av-col-del"></th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -1434,28 +1608,54 @@ function buildAccountDom(root) {
       tr.dataset.bucket = bIdx;
       tr.dataset.holding = hIdx;
       const taxFreeAccount = acc.id === "roth" || acc.id === "hsa";
-      const typeLabel = taxFreeAccount
-        ? "Tax-Free"
-        : (h.incomeType === "qualified" ? "Qualified" : h.incomeType === "taxfree" ? "Tax-free" : "Ordinary");
+      const bucketOptions = state.buckets.map(b =>
+        `<option value="${b.id}"${b.id === state.buckets[bIdx].id ? " selected" : ""}>${b.name}</option>`
+      ).join("");
       tr.innerHTML = `
-        <td><span class="av-bucket-badge">${bucketNameForHolding(bIdx)}</span></td>
         <td>
-          <span class="av-ticker">
-            ${h.ticker ? h.ticker : '<span style="color:var(--muted);font-weight:400">—</span>'}
-            ${h.ticker ? `<a class="source" href="${sourceURL(h.ticker)}" target="_blank" rel="noopener" title="Open source for current yield">↗</a>` : ""}
-          </span>
+          <select class="account-select" data-bucket="${bIdx}" data-holding="${hIdx}" data-field="bucketChange">
+            ${bucketOptions}
+          </select>
+        </td>
+        <td>
+          <div class="ticker-cell">
+            <input type="text" class="ticker-input" data-bucket="${bIdx}" data-holding="${hIdx}" data-field="ticker" value="${h.ticker || ""}">
+            <a class="source" href="${sourceURL(h.ticker)}" target="_blank" rel="noopener" title="Open source for current yield">↗</a>
+          </div>
         </td>
         <td class="num" data-display="av-pct"></td>
-        <td class="num">${fmtPct(h.yield || 0)}</td>
-        <td><span class="av-type-badge">${typeLabel}</span></td>
-        <td class="num">${fmt(h.amount || 0)}</td>
+        <td>
+          <div class="input-suffix"><input type="number" data-bucket="${bIdx}" data-holding="${hIdx}" data-field="yield" value="${displayNum(h.yield)}" placeholder="0" step="0.1" min="0"></div>
+        </td>
+        <td>
+          ${taxFreeAccount
+            ? '<span class="av-type-badge">Tax-Free</span>'
+            : `<select class="account-select" data-bucket="${bIdx}" data-holding="${hIdx}" data-field="incomeType">
+                 <option value="ordinary"${(h.incomeType || "ordinary") === "ordinary" ? " selected" : ""}>Ordinary</option>
+                 <option value="qualified"${h.incomeType === "qualified" ? " selected" : ""}>Qualified</option>
+                 <option value="taxfree"${h.incomeType === "taxfree" ? " selected" : ""}>Tax-free</option>
+               </select>`}
+        </td>
+        <td>
+          <div class="input-prefix"><input type="text" inputmode="numeric" data-commas="1" data-bucket="${bIdx}" data-holding="${hIdx}" data-field="amount" value="${displayCommaNum(h.amount)}" placeholder="0"></div>
+        </td>
         <td class="num income"><span data-display="av-income"></span></td>
+        <td class="av-col-del">
+          <button class="del" data-bucket="${bIdx}" data-holding="${hIdx}">✕</button>
+        </td>
       `;
       tbody.appendChild(tr);
     });
 
     tableWrap.appendChild(table);
     el.appendChild(tableWrap);
+
+    const addBtn = document.createElement("button");
+    addBtn.className = "add";
+    addBtn.textContent = "+ Add holding";
+    addBtn.dataset.addAccount = acc.id;
+    el.appendChild(addBtn);
+
     root.appendChild(el);
   });
 }
@@ -1604,7 +1804,7 @@ function refresh() {
     btn.classList.toggle("active", btn.dataset.view === state.viewMode);
   });
   const presetsEl = $("presets");
-  if (presetsEl) presetsEl.style.display = state.viewMode === "accounts" ? "none" : "";
+  if (presetsEl) presetsEl.style.display = "";
 
   const hyperIdx = state.buckets.findIndex(b => b.id === "hypergrowth");
   if (hyperIdx !== -1) {
@@ -1648,6 +1848,8 @@ function refresh() {
   let totalTaxableIncome = 0;
   let pctSum = 0;
   const acctUsed = { taxable: 0, traditional: 0, roth: 0, hsa: 0 };
+  const bucketTargetsById = {};
+  const bucketActualsById = {};
   const acctIncome = { taxable: 0, traditional: 0, roth: 0, hsa: 0 };
   const acctAfterTax = { taxable: 0, traditional: 0, roth: 0, hsa: 0 };
   const acctYieldNum = { taxable: 0, traditional: 0, roth: 0, hsa: 0 };
@@ -1655,9 +1857,11 @@ function refresh() {
   state.buckets.forEach((bucket, bIdx) => {
     const bucketActual = bucket.holdings.reduce((a, h) => a + (h.amount || 0), 0);
     const bucketTarget = bucketAmount(bucket, state.total, cashAmt);
+    bucketTargetsById[bucket.id] = bucketTarget;
+    bucketActualsById[bucket.id] = bucketActual;
     const y = bucketYield(bucket);
     const bucketIncomeActual = bucket.holdings.reduce(
-      (a, h) => a + (h.account === "hsa" ? 0 : (h.amount || 0) * h.yield / 100), 0
+      (a, h) => a + ((h.account || "taxable") === "hsa" ? 0 : (h.amount || 0) * h.yield / 100), 0
     );
     totalIncome += bucketIncomeActual;
     if (bucket.allocMode === "percent") pctSum += bucket.allocValue;
@@ -1692,7 +1896,7 @@ function refresh() {
       const hIncome = hAmt * h.yield / 100;
       const taxFactor = afterTaxFactor(h, state.taxRate, state.qualifiedRate);
       const hAfterTax = hIncome * taxFactor;
-      const isHsa = h.account === "hsa";
+      const isHsa = (h.account || "taxable") === "hsa";
       if (!isHsa) {
         totalAfterTax += hAfterTax;
         if (taxFactor === 1) totalTaxFreeIncome += hIncome;
@@ -1905,6 +2109,7 @@ function refresh() {
   }
 
   renderProjections(spendableTotal, totalIncome);
+  renderBucketSummary(bucketTargetsById, bucketActualsById);
 
   const zoomInput = $("projZoom");
   if (zoomInput && document.activeElement !== zoomInput && +zoomInput.value !== projHorizon) {
@@ -2028,11 +2233,39 @@ document.addEventListener("input", e => {
 
   if (hIdx != null) {
     const h = bucket.holdings[+hIdx];
+    if (field === "bucketChange") {
+      // Move holding from current bucket to the newly selected bucket.
+      const newBIdx = state.buckets.findIndex(b => b.id === val);
+      if (newBIdx !== -1 && newBIdx !== +bIdx) {
+        bucket.holdings.splice(+hIdx, 1);
+        state.buckets[newBIdx].holdings.push(h);
+        render();
+      }
+      return;
+    }
     if (field === "weight") {
       const cashB = state.buckets.find(b => b.allocMode === "dollar");
       const cashAmtNow = cashB ? Math.min(cashB.allocValue, state.total) : 0;
       const bucketTarget = bucketAmount(bucket, state.total, cashAmtNow);
       h.amount = bucketTarget > 0 ? (val * bucketTarget / 100) : 0;
+
+      // Auto-balance: the "last other" holding in this bucket absorbs the
+      // remainder so weights sum to 100% (amounts sum to bucket target).
+      // If the user is editing the last holding, the second-to-last absorbs.
+      if (bucketTarget > 0 && bucket.holdings.length > 1) {
+        const editedIdx = +hIdx;
+        let absorberIdx = -1;
+        for (let i = bucket.holdings.length - 1; i >= 0; i--) {
+          if (i !== editedIdx) { absorberIdx = i; break; }
+        }
+        if (absorberIdx !== -1) {
+          let sumOthersAmt = 0;
+          bucket.holdings.forEach((h2, i) => {
+            if (i !== absorberIdx) sumOthersAmt += (h2.amount || 0);
+          });
+          bucket.holdings[absorberIdx].amount = Math.max(0, bucketTarget - sumOthersAmt);
+        }
+      }
     } else {
       h[field] = val;
     }
@@ -2049,7 +2282,7 @@ function resetState() {
   state.monthlySpending = 0;
   state.activePreset = null;
   state.presetNoteDismissed = null;
-  state.viewMode = "buckets";
+  state.viewMode = "accounts";
   state.accountTargets = { taxable: 0, traditional: 0, roth: 0, hsa: 0 };
   state.buckets.forEach(b => {
     b.allocValue = 0;
@@ -2113,7 +2346,7 @@ function importStateFromFile(file) {
       state.monthlySpending = Number(data.monthlySpending) || 0;
       state.activePreset = (data.activePreset && PRESETS[data.activePreset]) ? data.activePreset : null;
       state.presetNoteDismissed = (data.presetNoteDismissed && PRESETS[data.presetNoteDismissed]) ? data.presetNoteDismissed : null;
-      state.viewMode = (data.viewMode === "accounts") ? "accounts" : "buckets";
+      state.viewMode = (data.viewMode === "buckets") ? "buckets" : "accounts";
       const at = (data.accountTargets && typeof data.accountTargets === "object") ? data.accountTargets : {};
       state.accountTargets = {
         taxable: Number(at.taxable) || 0,
@@ -2209,9 +2442,20 @@ document.addEventListener("click", e => {
     refresh();
     return;
   }
+  if (e.target.matches("button.add[data-add-account]")) {
+    const accId = e.target.dataset.addAccount;
+    const foundationBIdx = state.buckets.findIndex(b => b.id === "foundation");
+    const bIdx = foundationBIdx !== -1 ? foundationBIdx : state.buckets.findIndex(b => b.allocMode !== "dollar");
+    state.buckets[bIdx].holdings.push({
+      ticker: "", weight: 0, amount: 0, yield: 0,
+      lastUpdated: null, account: accId, incomeType: "ordinary"
+    });
+    render();
+    return;
+  }
   if (e.target.matches("button.add")) {
     const bIdx = +e.target.dataset.addBucket;
-    state.buckets[bIdx].holdings.push({ ticker: "", weight: 0, amount: 0, yield: 0, lastUpdated: null, account: "taxable", incomeType: "ordinary" });
+    state.buckets[bIdx].holdings.push({ ticker: "", weight: 0, amount: 0, yield: 0, lastUpdated: null, account: pickBestAccount(), incomeType: "ordinary" });
     render();
   } else if (e.target.matches("button.del")) {
     const bIdx = +e.target.dataset.bucket;
@@ -2284,17 +2528,6 @@ document.getElementById("importFile").addEventListener("change", e => {
     tooltip.style.top = Math.max(4, top) + "px";
   });
   svgEl.addEventListener("mouseleave", hideHover);
-
-  wrap.addEventListener("wheel", e => {
-    if (!projRenderState) return;
-    e.preventDefault();
-    const step = e.deltaY > 0 ? 1 : -1;
-    const newH = Math.max(5, Math.min(100, projHorizon + step));
-    if (newH !== projHorizon) {
-      projHorizon = newH;
-      refresh();
-    }
-  }, { passive: false });
 })();
 
 render();
