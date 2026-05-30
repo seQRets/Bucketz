@@ -10,7 +10,7 @@
     --ivory:#f6f1e7; --paper:#fffdf8; --ink:#20312b; --ink-soft:#54625b;
     --line:#ddd3c0; --line-soft:#ece4d4; --gold:#a8801f; --gold-soft:#c8a24a;
     --green:#4d7242; --rust:#a85327;
-    --b-cash:#a8801f; --b-dividend:#4f8f93; --b-foundation:#3d5a80; --b-growth:#6b8f5e; --b-hypergrowth:#c2703d;
+    --b-cash:#a8801f; --b-dividend:#4f8f93; --b-growth:#6b8f5e; --b-hypergrowth:#c2703d;
   }
   :root[data-theme="dark"]{
     --ivory:#15130f; --paper:#1f1b15; --ink:#ece4d4; --ink-soft:#a59c8a;
@@ -63,10 +63,11 @@
   .editor{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:22px clamp(16px,3vw,26px);box-shadow:0 18px 40px -34px rgba(32,49,43,.45);}
   .editor h2{margin-bottom:14px;}
   .field-row{display:flex;flex-wrap:wrap;gap:16px 22px;align-items:flex-end;margin-bottom:18px;}
-  .field{display:flex;flex-direction:column;gap:5px;}
+  .field{display:flex;flex-direction:column;gap:5px;align-items:flex-start;}
+  .field .inp{align-self:flex-start;}
   .field label{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;}
   .inp{display:flex;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:8px;overflow:hidden;}
-  .inp:focus-within{border-color:var(--gold-soft);}
+  .inp:focus-within{border-color:var(--gold-soft);box-shadow:0 0 0 2px rgba(200,162,74,.22);}
   .inp .fix{padding:0 8px;color:var(--ink-soft);font-size:.85rem;background:rgba(168,128,31,.06);align-self:stretch;display:flex;align-items:center;}
   input,select{font-family:inherit;font-size:.9rem;color:var(--ink);background:var(--paper);border:none;padding:8px 10px;}
   input:focus,select:focus{outline:none;}
@@ -279,14 +280,14 @@
 <script>
 /* ---------- constants ---------- */
 const PRESETS = {
-  age30: { label: "Aggressive",   dividend: 30, foundation: 30, growth: 30, hypergrowth: 10, cashMonths: 3 },
-  ret20: { label: "Moderate",     dividend: 30, foundation: 35, growth: 35, hypergrowth: 0,  cashMonths: 6 },
-  ret10: { label: "Conservative", dividend: 40, foundation: 30, growth: 30, hypergrowth: 0,  cashMonths: 12 },
-  ret5:  { label: "Low Risk",     dividend: 40, foundation: 40, growth: 20, hypergrowth: 0,  cashMonths: 24 },
-  now:   { label: "Retirement",   dividend: 50, foundation: 40, growth: 10, hypergrowth: 0,  cashMonths: 36 },
+  age30: { label: "Aggressive",   dividend: 30, growth: 55, hypergrowth: 15, cashMonths: 3 },
+  ret20: { label: "Moderate",     dividend: 35, growth: 60, hypergrowth: 5,  cashMonths: 6 },
+  ret10: { label: "Conservative", dividend: 55, growth: 45, hypergrowth: 0,  cashMonths: 12 },
+  ret5:  { label: "Low Risk",     dividend: 65, growth: 35, hypergrowth: 0,  cashMonths: 24 },
+  now:   { label: "Retirement",   dividend: 80, growth: 20, hypergrowth: 0,  cashMonths: 36 },
 };
 const BUCKET_ACCENT = {
-  cash: "var(--b-cash)", dividend: "var(--b-dividend)", foundation: "var(--b-foundation)",
+  cash: "var(--b-cash)", dividend: "var(--b-dividend)",
   growth: "var(--b-growth)", hypergrowth: "var(--b-hypergrowth)",
 };
 const TICKER_PALETTE = ["#3d5a80","#4f8f93","#6b8f5e","#c2703d","#d4a64a","#b5566f","#7d93a8","#b9b09c","#8a6f15","#a85327","#33486b","#4d7242"];
@@ -306,11 +307,19 @@ const state = {
   buckets: [
     { id:"cash",        name:"Cash",        desc:"Stable spending reserve",   allocMode:"dollar",  allocValue:0, holdings:[] },
     { id:"dividend",    name:"Dividend",    desc:"Income generation",          allocMode:"percent", allocValue:0, holdings:[] },
-    { id:"foundation",  name:"Foundation",  desc:"Core market exposure",       allocMode:"percent", allocValue:0, holdings:[] },
     { id:"growth",      name:"Growth",      desc:"Long-term appreciation",     allocMode:"percent", allocValue:0, holdings:[] },
     { id:"hypergrowth", name:"Hypergrowth", desc:"Individual stocks or crypto",allocMode:"percent", allocValue:0, holdings:[] },
   ],
 };
+
+// Foundation bucket was removed — fold any saved/imported holdings into Growth, drop the bucket
+function mergeOutFoundation(){
+  const fIdx = state.buckets.findIndex(b=>b.id==="foundation");
+  if(fIdx===-1) return;
+  const gb = state.buckets.find(b=>b.id==="growth");
+  if(gb) gb.holdings.push(...state.buckets[fIdx].holdings);
+  state.buckets.splice(fIdx,1);
+}
 
 (function loadState(){
   try{
@@ -326,6 +335,7 @@ const state = {
     if(!state.buckets.find(b=>b.id==="hypergrowth")){
       state.buckets.push({ id:"hypergrowth", name:"Hypergrowth", desc:"Individual stocks or crypto", allocMode:"percent", allocValue:0, holdings:[] });
     }
+    mergeOutFoundation();
     state.buckets.forEach(b=>b.holdings.forEach(h=>{
       if(!h.account) h.account="taxable";
       if(!h.incomeType) h.incomeType="ordinary";
@@ -640,7 +650,7 @@ function refresh(){
     gw.textContent=`Bucket percentages (excluding cash) sum to ${pctSum}% — should be 100%.`;
     gw.classList.remove("ok");
   }else{
-    gw.textContent="Cash is a dollar amount; Dividend / Foundation / Growth percentages apply to the remainder.";
+    gw.textContent="Cash is a dollar amount; Dividend / Growth / Hypergrowth percentages apply to the remainder.";
     gw.classList.add("ok");
   }
 
@@ -799,7 +809,6 @@ function applyPreset(id){
   state.activePreset=id; state.presetNoteDismissed=null;
   state.buckets.forEach(b=>{
     if(b.id==="dividend") b.allocValue=p.dividend;
-    else if(b.id==="foundation") b.allocValue=p.foundation;
     else if(b.id==="growth") b.allocValue=p.growth;
     else if(b.id==="hypergrowth") b.allocValue=p.hypergrowth;
     else if(b.id==="cash" && state.monthlySpending>0 && p.cashMonths>0) b.allocValue=p.cashMonths*state.monthlySpending;
@@ -838,6 +847,7 @@ function importFromFile(file){
         })),
       }));
       if(!state.buckets.find(b=>b.id==="hypergrowth")) state.buckets.push({id:"hypergrowth",name:"Hypergrowth",desc:"Individual stocks or crypto",allocMode:"percent",allocValue:0,holdings:[]});
+      mergeOutFoundation();
       render();
     }catch(err){ alert("Couldn't read that file: "+err.message); }
   };
