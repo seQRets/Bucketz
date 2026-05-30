@@ -12,6 +12,21 @@
     --green:#4d7242; --rust:#a85327;
     --b-cash:#a8801f; --b-dividend:#4f8f93; --b-foundation:#3d5a80; --b-growth:#6b8f5e; --b-hypergrowth:#c2703d;
   }
+  :root[data-theme="dark"]{
+    --ivory:#15130f; --paper:#1f1b15; --ink:#ece4d4; --ink-soft:#a59c8a;
+    --line:#37322a; --line-soft:#2a251f; --gold:#d6ab4f; --gold-soft:#c8a24a;
+    --green:#86b06b; --rust:#d2814f;
+  }
+  :root[data-theme="dark"] body{
+    background:radial-gradient(1100px 560px at 82% -10%, rgba(214,171,79,.10), transparent 60%), var(--ivory);
+  }
+  :root[data-theme="dark"] .bk1{background:rgba(214,171,79,.18);color:#d6ab4f;}
+  :root[data-theme="dark"] .bk2{background:rgba(79,143,147,.24);color:#7fc4c8;}
+  :root[data-theme="dark"] .bk3{background:rgba(110,150,200,.22);color:#9bb6e0;}
+  :root[data-theme="dark"] .pill{background:rgba(214,171,79,.16);color:#d6ab4f;}
+  :root[data-theme="dark"] .bcard,
+  :root[data-theme="dark"] .card,
+  :root[data-theme="dark"] .panel{box-shadow:0 18px 40px -30px rgba(0,0,0,.7);}
   *{box-sizing:border-box;min-width:0;}
   html{-webkit-text-size-adjust:100%;}
   body{
@@ -56,7 +71,10 @@
   input,select{font-family:inherit;font-size:.9rem;color:var(--ink);background:var(--paper);border:none;padding:8px 10px;}
   input:focus,select:focus{outline:none;}
   .inp input{width:130px;text-align:right;}
-  .inp.short input{width:62px;}
+  .inp.short input{width:74px;}
+  input[type=number]{-moz-appearance:textfield;}
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   select.std{border:1px solid var(--line);border-radius:8px;padding:7px 9px;cursor:pointer;}
   select.std:focus{border-color:var(--gold-soft);}
 
@@ -157,6 +175,12 @@
   .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px;align-items:start;}
   .panel{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 18px 40px -34px rgba(32,49,43,.45);}
   .total-chart{position:relative;height:290px;display:flex;align-items:center;justify-content:center;}
+  .seg{cursor:pointer;transition:opacity .12s;}
+  .total-chart:hover .seg,.chart-box:hover .seg{opacity:.45;}
+  .seg:hover{opacity:1;}
+  .chart-tip{position:absolute;display:none;pointer-events:none;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:6px 11px;font-size:.82rem;box-shadow:0 12px 28px -12px rgba(0,0,0,.5);white-space:nowrap;z-index:20;}
+  .chart-tip .t-name{font-weight:700;margin-right:8px;}
+  .chart-tip .t-val{color:var(--ink-soft);font-variant-numeric:tabular-nums;}
   .legend .row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:.88rem;}
   .legend .row:last-child{border-bottom:none;}
   .legend .lhs{display:flex;align-items:center;gap:0;min-width:0;}
@@ -194,6 +218,7 @@
       <p class="lede">Enter your holdings once. Bucketz lays out the bucket strategy, shows how it sits across your accounts, and renders a clean, tax-aware plan you can read at a glance.</p>
     </div>
     <div class="actions">
+      <button class="btn" id="themeBtn" title="Toggle light / dark theme">🌙 Dark</button>
       <button class="btn" id="exportBtn" title="Download your data as JSON">Export</button>
       <button class="btn" id="importBtn" title="Load a previously exported JSON">Import</button>
       <button class="btn danger" id="resetBtn" title="Permanently delete all data">Erase</button>
@@ -314,6 +339,23 @@ function saveState(){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(stat
 
 /* ---------- helpers ---------- */
 const $ = id => document.getElementById(id);
+
+/* ---------- theme ---------- */
+const THEME_KEY = "bucketz-theme";
+function applyTheme(theme){
+  const dark = theme === "dark";
+  document.documentElement.dataset.theme = dark ? "dark" : "light";
+  const btn = $("themeBtn");
+  if(btn) btn.textContent = dark ? "☀ Light" : "🌙 Dark";
+}
+(function initTheme(){
+  let theme;
+  try{ theme = localStorage.getItem(THEME_KEY); }catch(e){}
+  if(theme !== "dark" && theme !== "light"){
+    theme = (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+  }
+  applyTheme(theme);
+})();
 const fmt = n => "$" + Math.round(n).toLocaleString("en-US");
 const fmtK = n => Math.abs(n) >= 1e6 ? "$"+(n/1e6).toFixed(2)+"M" : "$"+Math.round(n/1000)+"K";
 const fmtPct = n => n.toFixed(1) + "%";
@@ -390,7 +432,7 @@ function computeDerived(){
   }));
   const spendable=Math.max(state.total-hsaTotal,0);
 
-  return { cashAmt, tickerColor, colorOf, accts, agg, tickers,
+  return { cashAmt, investable: Math.max(state.total-cashAmt,0), tickerColor, colorOf, accts, agg, tickers,
     totals:{ income, afterTax, taxFree, taxable, hsaTotal, spendable,
       yield: spendable>0 ? income/spendable*100 : 0 } };
 }
@@ -408,7 +450,8 @@ function svgDoughnut(segments, size){
     let off=0;
     segments.forEach(s=>{
       const len=s.value/total*C;
-      body+=`<circle cx="${cx}" cy="${cy}" r="${rr}" fill="none" stroke="${s.color}" stroke-width="${stroke}" stroke-dasharray="${Math.max(0,len-gap)} ${C-Math.max(0,len-gap)}" stroke-dashoffset="${-off}" transform="rotate(-90 ${cx} ${cy})" stroke-linecap="butt"/>`;
+      const meta = s.label ? ` class="seg" data-label="${s.label}" data-value="${s.value}" data-pct="${(s.value/total*100).toFixed(1)}"` : "";
+      body+=`<circle cx="${cx}" cy="${cy}" r="${rr}" fill="none" stroke="${s.color}" stroke-width="${stroke}" stroke-dasharray="${Math.max(0,len-gap)} ${C-Math.max(0,len-gap)}" stroke-dashoffset="${-off}" transform="rotate(-90 ${cx} ${cy})" stroke-linecap="butt"${meta}/>`;
       off+=len;
     });
   }
@@ -537,15 +580,25 @@ function refresh(){
 
     const target=bucketAmount(bucket,state.total,d.cashAmt);
     const actual=bucket.holdings.reduce((a,h)=>a+(h.amount||0),0);
+    const actualPct=(bucket.allocMode==="percent" && d.investable>0) ? (actual/d.investable*100) : 0;
+    const noTarget = bucket.allocMode==="percent" && !bucket.allocValue;
 
     const allocInput=ws.querySelector('input[data-field="allocValue"]');
     if(allocInput && document.activeElement!==allocInput){
-      allocInput.value = allocInput.dataset.commas==="1" ? displayCommaNum(bucket.allocValue) : displayNum(bucket.allocValue);
+      if(noTarget){
+        // No explicit target — reflect the bucket's actual share of the investable pot
+        allocInput.value = actualPct>0 ? actualPct.toFixed(1) : "";
+      }else{
+        allocInput.value = allocInput.dataset.commas==="1" ? displayCommaNum(bucket.allocValue) : displayNum(bucket.allocValue);
+      }
     }
     const tEl=ws.querySelector('[data-display="wsTarget"]');
     if(tEl){
-      if(bucket.allocMode==="dollar" || target<=0){
+      if(bucket.allocMode==="dollar"){
         tEl.textContent = actual>0 ? `allocated ${fmt(actual)}` : "";
+        tEl.classList.remove("over");
+      }else if(noTarget){
+        tEl.textContent = actual>0 ? `${fmtPct(actualPct)} · ${fmt(actual)}` : "";
         tEl.classList.remove("over");
       }else{
         tEl.textContent = `${fmt(actual)} of ${fmt(target)}`;
@@ -675,7 +728,7 @@ function renderPlanBody(d){
     const hs=d.accts[a];
     const total=hs.reduce((s,h)=>s+(h.amount||0),0);
     const income=hs.reduce((s,h)=>s+(h.amount||0)*h.yield/100,0);
-    const segs=hs.filter(h=>(h.amount||0)>0).map(h=>({value:h.amount||0,color:d.colorOf(h)}));
+    const segs=hs.filter(h=>(h.amount||0)>0).map(h=>({value:h.amount||0,color:d.colorOf(h),label:(h.ticker||"—")}));
     const rows=hs.map(h=>{
       const pct=total>0?((h.amount||0)/total*100).toFixed(1):"0.0";
       const inc=(h.amount||0)*h.yield/100;
@@ -685,7 +738,7 @@ function renderPlanBody(d){
     return `<div class="card">
       <h3>${ACCOUNT_META[a].name}</h3>
       <p class="acct-tot">${fmt(total)} · <span class="pill">${ACCOUNT_META[a].tag}</span></p>
-      <div class="chart-box">${svgDoughnut(segs,170)}</div>
+      <div class="chart-box">${svgDoughnut(segs,170)}<div class="chart-tip"></div></div>
       <table class="read"><thead><tr><th>Holding</th><th class="num">Value</th><th class="num">%</th><th class="num">Income/yr</th></tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr><td class="lbl">Annual income</td><td></td><td></td><td class="num">${fmt(income)}</td></tr></tfoot></table>
@@ -713,8 +766,8 @@ function renderPlanBody(d){
   }
 
   /* whole portfolio + risk */
-  const totalSegs=d.tickers.map(t2=>({value:d.agg[t2],color:d.tickerColor[t2]}));
   const grand=d.tickers.reduce((s,t2)=>s+d.agg[t2],0);
+  const totalSegs=d.tickers.map(t2=>({value:d.agg[t2],color:d.tickerColor[t2],label:t2}));
   if(grand>0){
     const legend=d.tickers.map(t2=>{
       // yield for this ticker = weighted avg across holdings of that ticker
@@ -727,7 +780,7 @@ function renderPlanBody(d){
     }).join("");
     html+=`<section><span class="phase-tag">Whole portfolio</span><h2>Risk mix</h2><div class="rule"></div>
       <div class="two">
-        <div class="panel"><div class="total-chart">${svgDoughnut(totalSegs,250)}</div></div>
+        <div class="panel"><div class="total-chart">${svgDoughnut(totalSegs,250)}<div class="chart-tip"></div></div></div>
         <div><div class="legend">${legend}</div>
           <p class="muted" style="font-size:.86rem;margin-top:16px;">Risk tiers are a rough guide from each holding's yield — higher yield generally means more NAV/credit risk. Growth (0% yield) holdings carry price risk instead.</p>
         </div>
@@ -828,6 +881,13 @@ document.addEventListener("input",e=>{
 });
 
 document.addEventListener("click",e=>{
+  if(e.target.id==="themeBtn"){
+    const cur = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+    const next = cur === "dark" ? "light" : "dark";
+    try{ localStorage.setItem(THEME_KEY, next); }catch(e){}
+    applyTheme(next);
+    return;
+  }
   if(e.target.id==="exportBtn"){ exportState(); return; }
   if(e.target.id==="importBtn"){ $("importFile").click(); return; }
   if(e.target.id==="resetBtn"){ if(confirm("Erase everything? All data will be permanently deleted.")){ resetState(); render(); } return; }
@@ -852,6 +912,33 @@ document.addEventListener("click",e=>{
 });
 
 $("importFile").addEventListener("change",e=>{ const f=e.target.files && e.target.files[0]; if(f) importFromFile(f); e.target.value=""; });
+
+// Doughnut hover tooltip — works for any chart with .seg segments + a .chart-tip
+// (delegated; plan re-renders often). Rect/size cached per segment to avoid
+// per-move layout reads; innerHTML rewritten only when the segment changes.
+let _tipSeg=null, _tipEl=null, _tipRect=null, _tipW=0, _tipH=0;
+document.addEventListener("mousemove",e=>{
+  const seg=e.target.closest && e.target.closest(".seg");
+  if(!seg){
+    if(_tipEl){ _tipEl.style.display="none"; _tipSeg=_tipEl=_tipRect=null; }
+    return;
+  }
+  if(seg!==_tipSeg){
+    const box=seg.closest(".total-chart,.chart-box");
+    const tip=box && box.querySelector(".chart-tip");
+    if(!tip) return;
+    tip.innerHTML=`<span class="t-name">${seg.dataset.label}</span><span class="t-val">${fmt(+seg.dataset.value)} · ${seg.dataset.pct}%</span>`;
+    tip.style.display="block";
+    _tipSeg=seg; _tipEl=tip; _tipRect=box.getBoundingClientRect();
+    _tipW=tip.offsetWidth; _tipH=tip.offsetHeight;
+  }
+  const r=_tipRect;
+  let x=e.clientX-r.left+14, y=e.clientY-r.top+14;
+  if(x+_tipW>r.width) x=e.clientX-r.left-_tipW-14;
+  if(y+_tipH>r.height) y=r.height-_tipH-6;
+  _tipEl.style.left=Math.max(6,x)+"px";
+  _tipEl.style.top=Math.max(6,y)+"px";
+});
 
 render();
 </script>
