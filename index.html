@@ -172,7 +172,7 @@
   .bcard table{margin-top:14px;}
 
   /* Plan: account cards */
-  .accounts{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:20px;}
+  .accounts{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:20px;}
   .card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:22px 22px 18px;display:flex;flex-direction:column;box-shadow:0 18px 40px -34px rgba(32,49,43,.45);}
   .card h3{font-size:1.16rem;font-weight:700;margin:0;letter-spacing:-.01em;}
   .card .acct-tot{color:var(--ink-soft);font-size:.86rem;margin:3px 0 0;}
@@ -460,7 +460,7 @@ function computeDerived(){
   // accounts
   const accts={taxable:[],traditional:[],roth:[],hsa:[]};
   const acctUsed={taxable:0,traditional:0,roth:0,hsa:0};
-  state.buckets.forEach(b=>b.holdings.forEach(h=>{ const a=h.account||"taxable"; if(accts[a]){ accts[a].push(h); acctUsed[a]+=(h.amount||0); } }));
+  state.buckets.forEach(b=>b.holdings.forEach(h=>{ const a=h.account||"taxable"; if(accts[a]){ accts[a].push({h,bucket:b.name}); acctUsed[a]+=(h.amount||0); } }));
 
   // totals
   let income=0, afterTax=0, taxFree=0, taxable=0, hsaTotal=0;
@@ -796,38 +796,39 @@ function renderPlanBody(d){
       <div class="buckets">${cards}</div></section>`;
   }
 
-  /* account cards (taxable/traditional/roth) + HSA callout */
-  const acctCards=["taxable","traditional","roth"].filter(a=>d.accts[a].length>0).map(a=>{
+  /* account cards (all four: taxable/traditional/roth/hsa) */
+  const acctCards=["taxable","traditional","roth","hsa"].map(a=>{
     const hs=d.accts[a];
-    const total=hs.reduce((s,h)=>s+(h.amount||0),0);
-    const income=hs.reduce((s,h)=>s+(h.amount||0)*h.yield/100,0);
-    const segs=hs.filter(h=>(h.amount||0)>0).map(h=>({value:h.amount||0,color:d.colorOf(h),label:(h.ticker||"—")}));
-    const rows=hs.map(h=>{
+    const total=hs.reduce((s,e)=>s+(e.h.amount||0),0);
+    const income=hs.reduce((s,e)=>s+(e.h.amount||0)*e.h.yield/100,0);
+    const segs=hs.filter(e=>(e.h.amount||0)>0).map(e=>({value:e.h.amount||0,color:d.colorOf(e.h),label:(e.h.ticker||"—")}));
+    let rows=hs.map(e=>{
+      const h=e.h;
       const pct=total>0?((h.amount||0)/total*100).toFixed(1):"0.0";
       const inc=(h.amount||0)*h.yield/100;
       return `<tr><td><span class="dot" style="background:${d.colorOf(h)}"></span><span class="tkr">${h.ticker||"—"}</span></td>
+        <td class="muted">${e.bucket}</td>
         <td class="num">${fmt(h.amount||0)}</td><td class="num muted">${pct}%</td><td class="num">${inc>0?fmt(inc):"—"}</td></tr>`;
     }).join("");
+    if(hs.length===0) rows=`<tr><td colspan="5" class="muted" style="padding:14px 0;font-style:italic;">No holdings assigned to this account.</td></tr>`;
     return `<div class="card">
       <h3>${ACCOUNT_META[a].name}</h3>
       <p class="acct-tot">${fmt(total)} · <span class="pill">${ACCOUNT_META[a].tag}</span></p>
       <div class="chart-box">${svgDoughnut(segs,170)}<div class="chart-tip"></div></div>
-      <table class="read"><thead><tr><th>Holding</th><th class="num">Value</th><th class="num">%</th><th class="num">Income/yr</th></tr></thead>
+      <table class="read"><thead><tr><th>Holding</th><th>Bucket</th><th class="num">Value</th><th class="num">%</th><th class="num">Income/yr</th></tr></thead>
         <tbody>${rows}</tbody>
-        <tfoot><tr><td class="lbl">Annual income</td><td></td><td></td><td class="num">${fmt(income)}</td></tr></tfoot></table>
+        <tfoot><tr><td class="lbl">Annual income</td><td></td><td></td><td></td><td class="num">${fmt(income)}</td></tr></tfoot></table>
     </div>`;
   }).join("");
-  if(acctCards){
-    html+=`<section><span class="phase-tag">By account</span><h2>How the buckets sit across accounts</h2>
-      <p class="sec-note">Tax-free Roth withdrawals, tax-deferred Traditional, and taxable brokerage — placement drives your after-tax income.</p>
-      <div class="accounts">${acctCards}</div></section>`;
-  }
+  html+=`<section><span class="phase-tag">By account</span><h2>How the buckets sit across accounts</h2>
+    <p class="sec-note">Tax-free Roth withdrawals, tax-deferred Traditional, and taxable brokerage — placement drives your after-tax income.</p>
+    <div class="accounts">${acctCards}</div></section>`;
 
   /* HSA callout */
   if(d.accts.hsa.length>0){
     const hs=d.accts.hsa;
-    const total=hs.reduce((s,h)=>s+(h.amount||0),0);
-    const list=hs.map(h=>`${h.ticker||"—"} (${fmt(h.amount||0)})`).join(", ");
+    const total=hs.reduce((s,e)=>s+(e.h.amount||0),0);
+    const list=hs.map(e=>`${e.h.ticker||"—"} (${fmt(e.h.amount||0)})`).join(", ");
     html+=`<section><div class="hsa">
       <h3>HSA — the healthcare sleeve <span class="amt">${fmt(total)}</span></h3>
       <p class="muted" style="margin:2px 0 0;font-size:.9rem;">Kept separate from spendable income — its own job is pre-funding Medicare.</p>
