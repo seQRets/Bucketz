@@ -44,7 +44,7 @@
   h1{font-weight:700;font-size:clamp(1.7rem,4.6vw,2.6rem);line-height:1.06;margin:0 0 8px;letter-spacing:-.02em;}
   h1 .em{color:var(--gold);}
   .lede{max-width:680px;color:var(--ink-soft);font-size:.98rem;margin:0;}
-  .actions{display:flex;gap:8px;flex-shrink:0;}
+  .actions{display:flex;gap:8px;flex-shrink:0;margin-top:18px;}
   button.btn{
     background:var(--paper);border:1px solid var(--line);color:var(--ink-soft);
     border-radius:8px;padding:8px 13px;font-size:.72rem;font-family:inherit;cursor:pointer;
@@ -52,6 +52,14 @@
   }
   button.btn:hover{border-color:var(--gold-soft);color:var(--gold);}
   button.btn.danger:hover{border-color:var(--rust);color:var(--rust);}
+  .theme-toggle{
+    position:fixed;top:16px;right:16px;z-index:50;
+    width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+    background:var(--paper);border:1px solid var(--line);border-radius:9px;
+    font-size:1.05rem;line-height:1;cursor:pointer;padding:0;
+    transition:border-color .15s;
+  }
+  .theme-toggle:hover{border-color:var(--gold-soft);}
 
   h2{font-weight:700;font-size:clamp(1.3rem,3.2vw,1.6rem);margin:0 0 4px;letter-spacing:-.01em;}
   .phase-tag{display:inline-block;font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:6px;margin-bottom:8px;background:rgba(168,128,31,.15);color:var(--gold);}
@@ -159,7 +167,6 @@
   .bcard .body{padding:18px 20px 0;}
   .bcard .bnum{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;}
   .bcard h3{font-size:1.12rem;font-weight:700;margin:4px 0 2px;}
-  .bcard .role{font-size:.82rem;color:var(--ink-soft);margin:0 0 12px;}
   .bcard .amt{font-size:1.5rem;font-weight:700;letter-spacing:-.01em;}
   .bcard .amt small{font-size:.78rem;color:var(--ink-soft);font-weight:500;}
   .bcard table{margin-top:14px;}
@@ -225,6 +232,7 @@
 </style>
 </head>
 <body>
+<button class="theme-toggle" id="themeBtn" title="Toggle light / dark theme">🌙</button>
 <div class="wrap">
 
   <div class="topbar">
@@ -232,13 +240,12 @@
       <p class="eyebrow">🪣 Bucketz · Portfolio Planner</p>
       <h1>Plan your buckets,<br><span class="em">see them across every account</span></h1>
       <p class="lede">Enter your holdings once. Bucketz lays out the bucket strategy, shows how it sits across your accounts, and renders a clean, tax-aware plan you can read at a glance.</p>
-    </div>
-    <div class="actions">
-      <button class="btn" id="themeBtn" title="Toggle light / dark theme">🌙 Dark</button>
-      <button class="btn" id="exportBtn" title="Download your data as JSON">Export</button>
-      <button class="btn" id="importBtn" title="Load a previously exported JSON">Import</button>
-      <button class="btn danger" id="resetBtn" title="Permanently delete all data">Erase</button>
-      <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+      <div class="actions">
+        <button class="btn" id="exportBtn" title="Download your data as JSON">Export</button>
+        <button class="btn" id="importBtn" title="Load a previously exported JSON">Import</button>
+        <button class="btn danger" id="resetBtn" title="Permanently delete all data">Erase</button>
+        <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+      </div>
     </div>
   </div>
 
@@ -351,15 +358,6 @@ const state = {
   ],
 };
 
-// Foundation bucket was removed — fold any saved/imported holdings into Growth, drop the bucket
-function mergeOutFoundation(){
-  const fIdx = state.buckets.findIndex(b=>b.id==="foundation");
-  if(fIdx===-1) return;
-  const gb = state.buckets.find(b=>b.id==="growth");
-  if(gb) gb.holdings.push(...state.buckets[fIdx].holdings);
-  state.buckets.splice(fIdx,1);
-}
-
 (function loadState(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -369,14 +367,8 @@ function mergeOutFoundation(){
     ["total","taxRate","qualifiedRate","monthlySpending"].forEach(k=>{ if(typeof state[k]!=="number") state[k]=0; });
     if(state.activePreset && !PRESETS[state.activePreset]) state.activePreset=null;
     if(state.presetNoteDismissed===undefined) state.presetNoteDismissed=null;
-    // strip obsolete fields from older saves
-    ["viewMode","trackBuckets","trackAccounts"].forEach(k=>{ delete state[k]; });
     if(!state.accountTargets || typeof state.accountTargets!=="object") state.accountTargets={taxable:0,traditional:0,roth:0,hsa:0};
     ["taxable","traditional","roth","hsa"].forEach(k=>{ if(typeof state.accountTargets[k]!=="number") state.accountTargets[k]=0; });
-    if(!state.buckets.find(b=>b.id==="hypergrowth")){
-      state.buckets.push({ id:"hypergrowth", name:"Hypergrowth", desc:"Individual stocks or crypto", allocMode:"percent", allocValue:0, holdings:[] });
-    }
-    mergeOutFoundation();
     state.buckets.forEach(b=>b.holdings.forEach(h=>{
       if(!h.account) h.account="taxable";
       if(!h.incomeType) h.incomeType="ordinary";
@@ -397,14 +389,12 @@ function applyTheme(theme){
   const dark = theme === "dark";
   document.documentElement.dataset.theme = dark ? "dark" : "light";
   const btn = $("themeBtn");
-  if(btn) btn.textContent = dark ? "☀ Light" : "🌙 Dark";
+  if(btn){ btn.textContent = dark ? "☀️" : "🌙"; btn.title = dark ? "Switch to light theme" : "Switch to dark theme"; }
 }
 (function initTheme(){
   let theme;
   try{ theme = localStorage.getItem(THEME_KEY); }catch(e){}
-  if(theme !== "dark" && theme !== "light"){
-    theme = (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
-  }
+  if(theme !== "dark" && theme !== "light") theme = "light";
   applyTheme(theme);
 })();
 const fmt = n => "$" + Math.round(n).toLocaleString("en-US");
@@ -749,7 +739,7 @@ function renderSummary(d){
     `<div class="cell"><p class="k">Monthly After-Tax</p><p class="v green">${fmt(t.afterTax/12)}<small> / mo</small></p></div>`,
   ];
   if(t.hsaTotal>0) bandCells.push(`<div class="cell"><p class="k">+ HSA (earmarked)</p><p class="v">${fmtK(t.hsaTotal)}</p></div>`);
-  html+=`<section><div class="band top" style="margin-top:0">${bandCells.join("")}</div>`;
+  html+=`<section><div class="band" style="margin-top:0">${bandCells.join("")}</div>`;
 
   /* cashflow bar */
   if(t.income>0){
@@ -922,8 +912,6 @@ function importFromFile(file){
           account:h.account||"taxable",incomeType:h.incomeType||"ordinary",
         })),
       }));
-      if(!state.buckets.find(b=>b.id==="hypergrowth")) state.buckets.push({id:"hypergrowth",name:"Hypergrowth",desc:"Individual stocks or crypto",allocMode:"percent",allocValue:0,holdings:[]});
-      mergeOutFoundation();
       render();
     }catch(err){ alert("Couldn't read that file: "+err.message); }
   };
