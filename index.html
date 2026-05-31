@@ -337,7 +337,6 @@ const ACCOUNT_META = {
   hsa:         { name: "HSA",             tag: "Earmarked" },
 };
 const STORAGE_KEY = "retirement-tracker-v1";
-const STRATEGY_TICKERS = ["STRC","STRD","STRK","STRF","MSTR"];
 
 /* ---------- state ---------- */
 const state = {
@@ -415,7 +414,7 @@ function formatWithCommas(n){ const v=Number(n)||0; return Number.isInteger(v)?v
 function parseCommaNumber(s){ if(typeof s!=="string") return Number(s)||0; return parseFloat(s.replace(/[^0-9.-]/g,""))||0; }
 const displayNum = n => n===0 ? "" : String(n);
 const displayCommaNum = n => n===0 ? "" : formatWithCommas(n);
-function sourceURL(ticker){ const t=(ticker||"").trim().toUpperCase(); if(!t) return "#"; if(STRATEGY_TICKERS.includes(t)) return `https://strategy.com/${t.toLowerCase()}`; return `https://finance.yahoo.com/quote/${encodeURIComponent(t)}`; }
+function sourceURL(ticker){ const t=(ticker||"").trim().toUpperCase(); if(!t) return "#"; return `https://finance.yahoo.com/quote/${encodeURIComponent(t)}`; }
 function parseInputValue(t){ if(t.dataset.commas==="1") return parseCommaNumber(t.value); if(t.type==="number") return parseFloat(t.value)||0; return t.value; }
 function reformatCommasInPlace(t){
   if(t.value==="") return;
