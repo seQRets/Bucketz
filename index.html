@@ -65,6 +65,18 @@
   .field-row{display:flex;flex-wrap:wrap;gap:16px 22px;align-items:flex-end;margin-bottom:18px;}
   .field{display:flex;flex-direction:column;gap:5px;align-items:flex-start;}
   .field .inp{align-self:flex-start;}
+  .fund-label{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;margin:0 0 10px;}
+  .fund-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px;}
+  .fund-card{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:12px 14px;}
+  .fund-name{font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;margin-bottom:8px;}
+  .fund-card .inp{width:100%;}
+  .fund-card .inp input{width:100%;text-align:right;}
+  .fund-left{font-size:.78rem;color:var(--ink-soft);margin-top:8px;font-variant-numeric:tabular-nums;}
+  .fund-left .val{color:var(--ink);font-weight:600;}
+  .fund-left .val.over{color:var(--rust);}
+  .fund-sync{margin-left:10px;text-transform:none;letter-spacing:0;font-weight:600;color:var(--rust);}
+  .fund-row.out-of-sync .fund-card{border-color:var(--rust);}
+  .inp.out-of-sync{border-color:var(--rust);box-shadow:0 0 0 2px rgba(194,112,61,.18);}
   .field label{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;}
   .inp{display:flex;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:8px;overflow:hidden;}
   .inp:focus-within{border-color:var(--gold-soft);box-shadow:0 0 0 2px rgba(200,162,74,.22);}
@@ -176,6 +188,9 @@
   .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px;align-items:start;}
   .panel{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 18px 40px -34px rgba(32,49,43,.45);}
   .total-chart{position:relative;height:290px;display:flex;align-items:center;justify-content:center;}
+  .chart-total{margin-bottom:4px;}
+  .chart-total .ct-label{display:block;font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);font-weight:600;}
+  .chart-total .ct-val{display:block;font-size:1.5rem;font-weight:700;color:var(--ink);letter-spacing:-.01em;margin-top:2px;}
   .seg{cursor:pointer;transition:opacity .12s;}
   .total-chart:hover .seg,.chart-box:hover .seg{opacity:.45;}
   .seg:hover{opacity:1;}
@@ -237,7 +252,7 @@
       <div class="field-row">
         <div class="field">
           <label>Total portfolio</label>
-          <div class="inp"><span class="fix">$</span><input type="text" inputmode="numeric" data-commas="1" id="total" placeholder="0"></div>
+          <div class="inp" id="totalInp"><span class="fix">$</span><input type="text" inputmode="numeric" data-commas="1" id="total" placeholder="0"></div>
         </div>
         <div class="field">
           <label>Marginal rate</label>
@@ -250,6 +265,30 @@
         <div class="field">
           <label>Monthly spending</label>
           <div class="inp"><span class="fix">$</span><input type="text" inputmode="numeric" data-commas="1" id="monthlySpending" placeholder="0"></div>
+        </div>
+      </div>
+
+      <div class="fund-label">Account funding — amount available to distribute<span class="fund-sync" id="fundSync"></span></div>
+      <div class="fund-row" id="fundRow">
+        <div class="fund-card">
+          <div class="fund-name">Taxable</div>
+          <div class="inp"><span class="fix">$</span><input type="text" inputmode="numeric" data-commas="1" data-account-target="taxable" placeholder="0"></div>
+          <div class="fund-left">Remaining <span class="val" data-display="acctLeft-taxable">—</span></div>
+        </div>
+        <div class="fund-card">
+          <div class="fund-name">Traditional</div>
+          <div class="inp"><span class="fix">$</span><input type="text" inputmode="numeric" data-commas="1" data-account-target="traditional" placeholder="0"></div>
+          <div class="fund-left">Remaining <span class="val" data-display="acctLeft-traditional">—</span></div>
+        </div>
+        <div class="fund-card">
+          <div class="fund-name">Roth</div>
+          <div class="inp"><span class="fix">$</span><input type="text" inputmode="numeric" data-commas="1" data-account-target="roth" placeholder="0"></div>
+          <div class="fund-left">Remaining <span class="val" data-display="acctLeft-roth">—</span></div>
+        </div>
+        <div class="fund-card">
+          <div class="fund-name">HSA</div>
+          <div class="inp"><span class="fix">$</span><input type="text" inputmode="numeric" data-commas="1" data-account-target="hsa" placeholder="0"></div>
+          <div class="fund-left">Remaining <span class="val" data-display="acctLeft-hsa">—</span></div>
         </div>
       </div>
 
@@ -284,7 +323,7 @@ const PRESETS = {
   ret20: { label: "Moderate",     dividend: 35, growth: 60, hypergrowth: 5,  cashMonths: 6 },
   ret10: { label: "Conservative", dividend: 55, growth: 45, hypergrowth: 0,  cashMonths: 12 },
   ret5:  { label: "Low Risk",     dividend: 65, growth: 35, hypergrowth: 0,  cashMonths: 24 },
-  now:   { label: "Retirement",   dividend: 80, growth: 20, hypergrowth: 0,  cashMonths: 36 },
+  now:   { label: "Retirement",   dividend: 75, growth: 25, hypergrowth: 0,  cashMonths: 36 },
 };
 const BUCKET_ACCENT = {
   cash: "var(--b-cash)", dividend: "var(--b-dividend)",
@@ -304,6 +343,7 @@ const STRATEGY_TICKERS = ["STRC","STRD","STRK","STRF","MSTR"];
 const state = {
   total: 0, taxRate: 0, qualifiedRate: 0, monthlySpending: 0,
   activePreset: null, presetNoteDismissed: null,
+  accountTargets: { taxable: 0, traditional: 0, roth: 0, hsa: 0 },
   buckets: [
     { id:"cash",        name:"Cash",        desc:"Stable spending reserve",   allocMode:"dollar",  allocValue:0, holdings:[] },
     { id:"dividend",    name:"Dividend",    desc:"Income generation",          allocMode:"percent", allocValue:0, holdings:[] },
@@ -331,7 +371,9 @@ function mergeOutFoundation(){
     if(state.activePreset && !PRESETS[state.activePreset]) state.activePreset=null;
     if(state.presetNoteDismissed===undefined) state.presetNoteDismissed=null;
     // strip obsolete fields from older saves
-    ["viewMode","accountTargets","trackBuckets","trackAccounts"].forEach(k=>{ delete state[k]; });
+    ["viewMode","trackBuckets","trackAccounts"].forEach(k=>{ delete state[k]; });
+    if(!state.accountTargets || typeof state.accountTargets!=="object") state.accountTargets={taxable:0,traditional:0,roth:0,hsa:0};
+    ["taxable","traditional","roth","hsa"].forEach(k=>{ if(typeof state.accountTargets[k]!=="number") state.accountTargets[k]=0; });
     if(!state.buckets.find(b=>b.id==="hypergrowth")){
       state.buckets.push({ id:"hypergrowth", name:"Hypergrowth", desc:"Individual stocks or crypto", allocMode:"percent", allocValue:0, holdings:[] });
     }
@@ -428,7 +470,8 @@ function computeDerived(){
 
   // accounts
   const accts={taxable:[],traditional:[],roth:[],hsa:[]};
-  state.buckets.forEach(b=>b.holdings.forEach(h=>{ const a=h.account||"taxable"; if(accts[a]) accts[a].push(h); }));
+  const acctUsed={taxable:0,traditional:0,roth:0,hsa:0};
+  state.buckets.forEach(b=>b.holdings.forEach(h=>{ const a=h.account||"taxable"; if(accts[a]){ accts[a].push(h); acctUsed[a]+=(h.amount||0); } }));
 
   // totals
   let income=0, afterTax=0, taxFree=0, taxable=0, hsaTotal=0;
@@ -442,7 +485,7 @@ function computeDerived(){
   }));
   const spendable=Math.max(state.total-hsaTotal,0);
 
-  return { cashAmt, investable: Math.max(state.total-cashAmt,0), tickerColor, colorOf, accts, agg, tickers,
+  return { cashAmt, investable: Math.max(state.total-cashAmt,0), tickerColor, colorOf, accts, acctUsed, agg, tickers,
     totals:{ income, afterTax, taxFree, taxable, hsaTotal, spendable,
       yield: spendable>0 ? income/spendable*100 : 0 } };
 }
@@ -577,6 +620,37 @@ function refresh(){
   }
 
   const d=computeDerived();
+
+  // account funding: sync target inputs + remaining countdown
+  ["taxable","traditional","roth","hsa"].forEach(acc=>{
+    const target=state.accountTargets[acc]||0, used=d.acctUsed[acc];
+    const inp=document.querySelector(`input[data-account-target="${acc}"]`);
+    if(inp && document.activeElement!==inp) inp.value=displayCommaNum(target);
+    const leftEl=document.querySelector(`[data-display="acctLeft-${acc}"]`);
+    if(leftEl){
+      if(target===0 && used===0){ leftEl.textContent="—"; leftEl.classList.remove("over"); }
+      else{
+        const left=target-used;
+        leftEl.textContent = left<0 ? fmt(Math.abs(left))+" over" : fmt(left);
+        leftEl.classList.toggle("over", left<0);
+      }
+    }
+  });
+
+  // account funding totals vs Total Portfolio — flag when out of sync
+  const targetSum=["taxable","traditional","roth","hsa"].reduce((s,a)=>s+(state.accountTargets[a]||0),0);
+  const outOfSync = state.total>0 && targetSum>0 && Math.abs(targetSum-state.total)>0.5;
+  const fundRow=$("fundRow"), totalInp=$("totalInp"), fundSync=$("fundSync");
+  if(fundRow) fundRow.classList.toggle("out-of-sync", outOfSync);
+  if(totalInp) totalInp.classList.toggle("out-of-sync", outOfSync);
+  if(fundSync){
+    if(outOfSync){
+      const diff=targetSum-state.total;
+      fundSync.textContent = `— accounts total ${fmt(targetSum)}, ${diff>0?fmt(diff)+" over":fmt(-diff)+" under"} portfolio (${fmt(state.total)})`;
+    }else{
+      fundSync.textContent="";
+    }
+  }
 
   // per-bucket editor updates
   let pctSum=0;
@@ -790,7 +864,7 @@ function renderPlanBody(d){
     }).join("");
     html+=`<section><span class="phase-tag">Whole portfolio</span><h2>Risk mix</h2><div class="rule"></div>
       <div class="two">
-        <div class="panel"><div class="total-chart">${svgDoughnut(totalSegs,250)}<div class="chart-tip"></div></div></div>
+        <div class="panel"><div class="chart-total"><span class="ct-label">Total Portfolio</span><span class="ct-val">${fmt(grand)}</span></div><div class="total-chart">${svgDoughnut(totalSegs,250)}<div class="chart-tip"></div></div></div>
         <div><div class="legend">${legend}</div>
           <p class="muted" style="font-size:.86rem;margin-top:16px;">Risk tiers are a rough guide from each holding's yield — higher yield generally means more NAV/credit risk. Growth (0% yield) holdings carry price risk instead.</p>
         </div>
@@ -818,6 +892,7 @@ function applyPreset(id){
 function resetState(){
   state.total=0; state.taxRate=0; state.qualifiedRate=0; state.monthlySpending=0;
   state.activePreset=null; state.presetNoteDismissed=null;
+  state.accountTargets={taxable:0,traditional:0,roth:0,hsa:0};
   state.buckets.forEach(b=>{ b.allocValue=0; b.holdings=[]; });
   try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
 }
@@ -839,6 +914,8 @@ function importFromFile(file){
       state.monthlySpending=Number(data.monthlySpending)||0;
       state.activePreset=(data.activePreset && PRESETS[data.activePreset])?data.activePreset:null;
       state.presetNoteDismissed=(data.presetNoteDismissed && PRESETS[data.presetNoteDismissed])?data.presetNoteDismissed:null;
+      const at=(data.accountTargets && typeof data.accountTargets==="object")?data.accountTargets:{};
+      state.accountTargets={ taxable:Number(at.taxable)||0, traditional:Number(at.traditional)||0, roth:Number(at.roth)||0, hsa:Number(at.hsa)||0 };
       state.buckets=data.buckets.map(b=>({
         id:b.id,name:b.name,desc:b.desc,allocMode:b.allocMode,allocValue:Number(b.allocValue)||0,
         holdings:(b.holdings||[]).map(h=>({
@@ -867,6 +944,8 @@ document.addEventListener("input",e=>{
     if(state.activePreset){ const p=PRESETS[state.activePreset]; if(p && p.cashMonths>0){ const cb=state.buckets.find(b=>b.id==="cash"); if(cb) cb.allocValue=state.monthlySpending*p.cashMonths; } }
     refresh(); return;
   }
+  const acctTarget=t.dataset.accountTarget;
+  if(acctTarget){ state.accountTargets[acctTarget]=parseInputValue(t); refresh(); return; }
 
   const bIdx=t.dataset.bucket;
   if(bIdx==null) return;
