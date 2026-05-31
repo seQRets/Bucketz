@@ -352,7 +352,7 @@ const state = {
   accountTargets: { taxable: 0, traditional: 0, roth: 0, hsa: 0 },
   buckets: [
     { id:"cash",        name:"Cash",        desc:"Stable spending reserve",   allocMode:"dollar",  allocValue:0, holdings:[] },
-    { id:"dividend",    name:"Dividend",    desc:"Income generation",          allocMode:"percent", allocValue:0, holdings:[] },
+    { id:"dividend",    name:"Income",      desc:"Income generation",          allocMode:"percent", allocValue:0, holdings:[] },
     { id:"growth",      name:"Growth",      desc:"Long-term appreciation",     allocMode:"percent", allocValue:0, holdings:[] },
     { id:"hypergrowth", name:"Hypergrowth", desc:"Individual stocks or crypto",allocMode:"percent", allocValue:0, holdings:[] },
   ],
@@ -369,6 +369,7 @@ const state = {
     if(state.presetNoteDismissed===undefined) state.presetNoteDismissed=null;
     if(!state.accountTargets || typeof state.accountTargets!=="object") state.accountTargets={taxable:0,traditional:0,roth:0,hsa:0};
     ["taxable","traditional","roth","hsa"].forEach(k=>{ if(typeof state.accountTargets[k]!=="number") state.accountTargets[k]=0; });
+    const divB=state.buckets.find(b=>b.id==="dividend"); if(divB && divB.name==="Dividend") divB.name="Income";
     state.buckets.forEach(b=>b.holdings.forEach(h=>{
       if(!h.account) h.account="taxable";
       if(!h.incomeType) h.incomeType="ordinary";
@@ -551,8 +552,8 @@ function buildEditor(){
         <td class="cell-grow">
           <select class="std" data-bucket="${bIdx}" data-holding="${hIdx}" data-field="account">
             <option value="taxable"${(h.account||"taxable")==="taxable"?" selected":""}>Taxable</option>
-            <option value="traditional"${h.account==="traditional"?" selected":""}>Traditional</option>
-            <option value="roth"${h.account==="roth"?" selected":""}>Roth</option>
+            <option value="traditional"${h.account==="traditional"?" selected":""}>Trad IRA</option>
+            <option value="roth"${h.account==="roth"?" selected":""}>Roth IRA</option>
             <option value="hsa"${h.account==="hsa"?" selected":""}>HSA</option>
           </select>
         </td>
@@ -713,7 +714,7 @@ function refresh(){
     gw.textContent=`Bucket percentages (excluding cash) sum to ${pctSum}% — should be 100%.`;
     gw.classList.remove("ok");
   }else{
-    gw.textContent="Cash is a dollar amount; Dividend / Growth / Hypergrowth percentages apply to the remainder.";
+    gw.textContent="Cash is a dollar amount; Income / Growth / Hypergrowth percentages apply to the remainder.";
     gw.classList.add("ok");
   }
 
@@ -907,7 +908,7 @@ function importFromFile(file){
       const at=(data.accountTargets && typeof data.accountTargets==="object")?data.accountTargets:{};
       state.accountTargets={ taxable:Number(at.taxable)||0, traditional:Number(at.traditional)||0, roth:Number(at.roth)||0, hsa:Number(at.hsa)||0 };
       state.buckets=data.buckets.map(b=>({
-        id:b.id,name:b.name,desc:b.desc,allocMode:b.allocMode,allocValue:Number(b.allocValue)||0,
+        id:b.id,name:(b.id==="dividend"&&b.name==="Dividend")?"Income":b.name,desc:b.desc,allocMode:b.allocMode,allocValue:Number(b.allocValue)||0,
         holdings:(b.holdings||[]).map(h=>({
           ticker:String(h.ticker||""),amount:Number(h.amount)||0,yield:Number(h.yield)||0,
           account:h.account||"taxable",incomeType:h.incomeType||"ordinary",
