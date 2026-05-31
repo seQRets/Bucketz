@@ -128,6 +128,13 @@
   table.edit td{padding:5px 8px;border-bottom:1px solid var(--line-soft);vertical-align:middle;}
   table.edit tr:last-child td{border-bottom:none;}
   table.edit .ticker-cell{display:flex;align-items:center;gap:6px;}
+  table.edit .grip-col{width:22px;padding-left:0;padding-right:0;}
+  table.edit .grip{display:inline-block;cursor:grab;color:var(--line);font-size:1rem;line-height:1;user-select:none;padding:2px 2px;}
+  table.edit .grip:hover{color:var(--gold);}
+  table.edit .grip:active{cursor:grabbing;}
+  table.edit tr.dragging{opacity:.4;}
+  table.edit tr.drop-above td{box-shadow:inset 0 2px 0 var(--gold);}
+  table.edit tr.drop-below td{box-shadow:inset 0 -2px 0 var(--gold);}
   table.edit .ticker-cell input{width:84px;font-weight:600;}
   table.edit a.src{color:var(--ink-soft);text-decoration:none;border:1px solid var(--line);border-radius:5px;padding:2px 5px;font-size:.8rem;line-height:1;}
   table.edit a.src:hover{color:var(--gold);border-color:var(--gold-soft);}
@@ -143,6 +150,14 @@
   button.add:hover{color:var(--gold);border-color:var(--gold-soft);}
   .global-warn{margin-top:14px;font-size:.85rem;color:var(--rust);}
   .global-warn.ok{color:var(--ink-soft);}
+  .alt-section{margin-top:24px;border-top:1px solid var(--line);padding-top:18px;}
+  .alt-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px;}
+  .alt-title{font-size:.95rem;font-weight:700;}
+  .alt-sub{font-size:.8rem;color:var(--ink-soft);max-width:620px;margin-top:2px;}
+  .alt-total{font-size:.86rem;font-weight:700;color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .alt-section table.edit td .inp input{width:100%;}
+  .alt-section .pctcell input{width:64px;text-align:right;}
+  .alt-section .src-input{width:100%;font-weight:500;}
 
   /* Plan: summary band */
   .band{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-top:18px;}
@@ -175,7 +190,8 @@
   .accounts{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:20px;}
   .card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:22px 22px 18px;display:flex;flex-direction:column;box-shadow:0 18px 40px -34px rgba(32,49,43,.45);}
   .card h3{font-size:1.16rem;font-weight:700;margin:0;letter-spacing:-.01em;}
-  .card .acct-tot{color:var(--ink-soft);font-size:.86rem;margin:3px 0 0;}
+  .card .acct-tot{color:var(--ink-soft);font-size:.86rem;margin:6px 0 0;display:flex;align-items:center;gap:10px;}
+  .card .acct-tot .acct-val{font-size:1.5rem;font-weight:700;color:var(--ink);letter-spacing:-.01em;}
   .chart-box{position:relative;height:178px;margin:14px 0 8px;display:flex;align-items:center;justify-content:center;}
   .chart-box svg{max-height:178px;}
 
@@ -215,12 +231,7 @@
   .bk3{background:rgba(61,90,128,.16);color:#33486b;}
   .muted{color:var(--ink-soft);}
 
-  /* HSA */
-  .hsa{margin-top:22px;background:linear-gradient(120deg,rgba(107,143,94,.10),rgba(79,143,147,.06));border:1px solid var(--line);border-radius:16px;padding:22px clamp(18px,3vw,26px);}
-  .hsa h3{margin:0 0 4px;font-size:1.15rem;font-weight:700;}
-  .hsa .amt{font-size:1.6rem;font-weight:700;color:var(--green);}
-  .hsa ul{margin:12px 0 0;padding-left:18px;font-size:.9rem;color:var(--ink-soft);}
-  .hsa li{margin:6px 0;}
+  .card-note{margin:12px 0 0;font-size:.76rem;color:var(--ink-soft);font-style:italic;line-height:1.4;}
 
   .empty{color:var(--ink-soft);font-size:.92rem;text-align:center;padding:24px;background:var(--paper);border:1px dashed var(--line);border-radius:14px;}
 
@@ -313,6 +324,25 @@
 
       <div id="editorBuckets"></div>
       <div class="global-warn" id="globalWarn"></div>
+
+      <div class="alt-section">
+        <div class="alt-head">
+          <div>
+            <div class="alt-title">Alternative income</div>
+            <div class="alt-sub">Social Security, rental, pension, etc. — flows into the cash-flow bar and after-tax totals, but not Portfolio Yield.</div>
+          </div>
+          <span class="alt-total" id="altTotalLbl"></span>
+        </div>
+        <div class="scroll">
+          <table class="edit" id="altTable">
+            <thead><tr>
+              <th>Source</th><th class="num">Annual amount</th><th>Tax treatment</th><th class="num">Taxable %</th><th></th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <button class="add" id="addAlt">+ Add income source</button>
+      </div>
     </div>
   </section>
 
@@ -350,6 +380,7 @@ const state = {
   total: 0, taxRate: 0, qualifiedRate: 0, monthlySpending: 0,
   activePreset: null, presetNoteDismissed: null,
   accountTargets: { taxable: 0, traditional: 0, roth: 0, hsa: 0 },
+  altIncome: [],
   buckets: [
     { id:"cash",        name:"Cash",        desc:"Stable spending reserve",   allocMode:"dollar",  allocValue:0, holdings:[] },
     { id:"dividend",    name:"Income",      desc:"Income generation",          allocMode:"percent", allocValue:0, holdings:[] },
@@ -369,6 +400,7 @@ const state = {
     if(state.presetNoteDismissed===undefined) state.presetNoteDismissed=null;
     if(!state.accountTargets || typeof state.accountTargets!=="object") state.accountTargets={taxable:0,traditional:0,roth:0,hsa:0};
     ["taxable","traditional","roth","hsa"].forEach(k=>{ if(typeof state.accountTargets[k]!=="number") state.accountTargets[k]=0; });
+    if(!Array.isArray(state.altIncome)) state.altIncome=[];
     const divB=state.buckets.find(b=>b.id==="dividend"); if(divB && divB.name==="Dividend") divB.name="Income";
     state.buckets.forEach(b=>b.holdings.forEach(h=>{
       if(!h.account) h.account="taxable";
@@ -475,9 +507,27 @@ function computeDerived(){
   }));
   const spendable=Math.max(state.total-hsaTotal,0);
 
+  // alternative income (Social Security, rental, pension, etc.)
+  const portfolioIncome=income, portfolioAfterTax=afterTax;
+  let altTotal=0;
+  (state.altIncome||[]).forEach(s=>{
+    const amt=Number(s.annual)||0;
+    if(amt<=0) return;
+    altTotal+=amt;
+    let taxablePortion;
+    if(s.taxType==="taxfree") taxablePortion=0;
+    else if(s.taxType==="partial") taxablePortion=amt*(Number(s.taxablePct)||85)/100;
+    else taxablePortion=amt; // "ordinary"
+    const tfPortion=amt-taxablePortion;
+    income+=amt;
+    taxFree+=tfPortion;
+    taxable+=taxablePortion;
+    afterTax+=tfPortion + taxablePortion*(1-state.taxRate/100);
+  });
+
   return { cashAmt, investable: Math.max(state.total-cashAmt,0), tickerColor, colorOf, accts, acctUsed, agg, tickers,
-    totals:{ income, afterTax, taxFree, taxable, hsaTotal, spendable,
-      yield: spendable>0 ? income/spendable*100 : 0 } };
+    totals:{ income, afterTax, taxFree, taxable, hsaTotal, spendable, portfolioIncome, portfolioAfterTax, altTotal,
+      yield: spendable>0 ? portfolioIncome/spendable*100 : 0 } };
 }
 
 /* ---------- SVG doughnut ---------- */
@@ -530,7 +580,7 @@ function buildEditor(){
       <div class="scroll">
         <table class="edit">
           <thead><tr>
-            <th>Ticker</th><th>Account</th><th class="num">Yield</th><th class="num">Amount</th>
+            <th class="grip-col"></th><th>Ticker</th><th>Account</th><th class="num">Yield</th><th class="num">Amount</th>
             <th>Income Type</th><th class="num">Income</th><th></th>
           </tr></thead>
           <tbody></tbody>
@@ -541,8 +591,10 @@ function buildEditor(){
     bucket.holdings.forEach((h,hIdx)=>{
       const tr=document.createElement("tr");
       tr.dataset.rowIdx=hIdx;
+      tr.dataset.bucketIdx=bIdx;
       const taxFreeAcct = h.account==="roth"||h.account==="hsa";
       tr.innerHTML=`
+        <td class="grip-col"><span class="grip" draggable="true" title="Drag to reorder">⠿</span></td>
         <td>
           <div class="ticker-cell">
             <input type="text" data-bucket="${bIdx}" data-holding="${hIdx}" data-field="ticker" value="${h.ticker||""}">
@@ -583,6 +635,28 @@ function buildEditor(){
   });
 }
 
+function buildAltIncome(){
+  const tbody=document.querySelector("#altTable tbody");
+  if(!tbody) return;
+  tbody.innerHTML="";
+  (state.altIncome||[]).forEach((s,i)=>{
+    const tr=document.createElement("tr");
+    tr.dataset.altIdx=i;
+    const tt=s.taxType||"ordinary";
+    tr.innerHTML=`
+      <td><input type="text" class="src-input" data-alt="${i}" data-field="label" value="${(s.label||"").replace(/"/g,'&quot;')}" placeholder="e.g. Social Security"></td>
+      <td><div class="inp"><span class="fix">$</span><input type="text" inputmode="numeric" data-commas="1" data-alt="${i}" data-field="annual" value="${displayCommaNum(Number(s.annual)||0)}" placeholder="0"></div></td>
+      <td><select class="std" data-alt="${i}" data-field="taxType">
+        <option value="taxfree"${tt==="taxfree"?" selected":""}>Tax-free</option>
+        <option value="ordinary"${tt==="ordinary"?" selected":""}>Taxable</option>
+        <option value="partial"${tt==="partial"?" selected":""}>Partial</option>
+      </select></td>
+      <td class="num pctcell">${tt==="partial"?`<div class="inp short"><input type="number" data-alt="${i}" data-field="taxablePct" value="${Number(s.taxablePct)||85}" step="1" min="0" max="100"><span class="fix">%</span></div>`:'<span class="muted">—</span>'}</td>
+      <td style="text-align:right"><button class="del" data-alt-del="${i}">✕</button></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
 function refresh(){
   // top inputs (skip focused)
   [["total",displayCommaNum(state.total)],["taxRate",displayNum(state.taxRate)],
@@ -610,6 +684,18 @@ function refresh(){
   }
 
   const d=computeDerived();
+
+  // alt-income: total label + sync non-focused inputs
+  const altLbl=$("altTotalLbl");
+  if(altLbl) altLbl.textContent = d.totals.altTotal>0 ? fmt(d.totals.altTotal)+"/yr" : "";
+  (state.altIncome||[]).forEach((s,i)=>{
+    const row=document.querySelector(`#altTable tr[data-alt-idx="${i}"]`);
+    if(!row) return;
+    [["label",s.label||""],["annual",displayCommaNum(Number(s.annual)||0)]].forEach(([f,v])=>{
+      const inp=row.querySelector(`[data-field="${f}"]`);
+      if(inp && document.activeElement!==inp && inp.value!==v) inp.value=v;
+    });
+  });
 
   // account funding: sync target inputs + remaining countdown
   ["taxable","traditional","roth","hsa"].forEach(acc=>{
@@ -735,7 +821,7 @@ function renderSummary(d){
   /* summary band */
   const bandCells=[
     `<div class="cell"><p class="k">Portfolio</p><p class="v">${fmtK(state.total)}</p></div>`,
-    `<div class="cell"><p class="k">Annual Income</p><p class="v">${fmt(t.income)}<small> / yr</small></p></div>`,
+    `<div class="cell"><p class="k">${t.altTotal>0?"All-In Income":"Annual Income"}</p><p class="v">${fmt(t.income)}<small> / yr${t.altTotal>0?` · incl. ${fmt(t.altTotal)} alt`:""}</small></p></div>`,
     `<div class="cell"><p class="k">Portfolio Yield</p><p class="v">${t.yield.toFixed(1)}<small>%</small></p></div>`,
     `<div class="cell"><p class="k">Monthly After-Tax</p><p class="v green">${fmt(t.afterTax/12)}<small> / mo</small></p></div>`,
   ];
@@ -746,15 +832,15 @@ function renderSummary(d){
   if(t.income>0){
     const tf=t.taxFree, tx=t.taxable;
     const seg=[];
-    if(tf>0) seg.push(`<div class="seg" style="flex:${Math.max(tf,1)};background:var(--b-growth)">Tax-free ${fmt(tf/12)}/mo</div>`);
-    if(tx>0) seg.push(`<div class="seg" style="flex:${Math.max(tx,1)};background:var(--b-dividend)">Taxable ${fmt(tx/12)}/mo</div>`);
+    if(tf>0) seg.push(`<div class="seg" style="flex:${Math.max(tf,1)};background:#278900">Tax-free ${fmt(tf/12)}/mo</div>`);
+    if(tx>0) seg.push(`<div class="seg" style="flex:${Math.max(tx,1)};background:#d10202">Taxable ${fmt(tx/12)}/mo</div>`);
     html+=`
       <div class="cashflow">
         <div class="cf-head"><span class="big">${fmt(t.income/12)} / month pre-tax</span><span class="muted">${fmt(t.afterTax/12)}/mo after-tax · ${fmt(t.income)}/yr</span></div>
         <div class="cf-bar">${seg.join("")}</div>
         <div class="cf-legend">
-          <span><span class="dot" style="background:var(--b-growth)"></span>Tax-free income — Roth, HSA-excluded, and tax-free holdings</span>
-          <span><span class="dot" style="background:var(--b-dividend)"></span>Taxable income — taxed at your marginal / qualified rate</span>
+          <span><span class="dot" style="background:#278900"></span>Tax-free income — Roth, HSA-excluded, tax-free holdings${t.altTotal>0?" & alt sources":""}</span>
+          <span><span class="dot" style="background:#d10202"></span>Taxable income — taxed at your marginal / qualified rate</span>
         </div>
       </div>`;
   }
@@ -812,33 +898,22 @@ function renderPlanBody(d){
         <td class="num">${fmt(h.amount||0)}</td><td class="num muted">${pct}%</td><td class="num">${inc>0?fmt(inc):"—"}</td></tr>`;
     }).join("");
     if(hs.length===0) rows=`<tr><td colspan="5" class="muted" style="padding:14px 0;font-style:italic;">No holdings assigned to this account.</td></tr>`;
+    const hsaNote = a==="hsa"
+      ? `<p class="card-note">* Excluded from the income and yield figures above — HSA funds aren't generally available for daily spending until 65.</p>`
+      : "";
     return `<div class="card">
-      <h3>${ACCOUNT_META[a].name}</h3>
-      <p class="acct-tot">${fmt(total)} · <span class="pill">${ACCOUNT_META[a].tag}</span></p>
+      <h3>${ACCOUNT_META[a].name}${a==="hsa"?" *":""}</h3>
+      <p class="acct-tot"><span class="acct-val">${fmt(total)}</span> <span class="pill">${ACCOUNT_META[a].tag}</span></p>
       <div class="chart-box">${svgDoughnut(segs,170)}<div class="chart-tip"></div></div>
       <table class="read"><thead><tr><th>Holding</th><th>Bucket</th><th class="num">Value</th><th class="num">%</th><th class="num">Income/yr</th></tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr><td class="lbl">Annual income</td><td></td><td></td><td></td><td class="num">${fmt(income)}</td></tr></tfoot></table>
+      ${hsaNote}
     </div>`;
   }).join("");
   html+=`<section><span class="phase-tag">By account</span><h2>How the buckets sit across accounts</h2>
     <p class="sec-note">Tax-free Roth withdrawals, tax-deferred Traditional, and taxable brokerage — placement drives your after-tax income.</p>
     <div class="accounts">${acctCards}</div></section>`;
-
-  /* HSA callout */
-  if(d.accts.hsa.length>0){
-    const hs=d.accts.hsa;
-    const total=hs.reduce((s,e)=>s+(e.h.amount||0),0);
-    const list=hs.map(e=>`${e.h.ticker||"—"} (${fmt(e.h.amount||0)})`).join(", ");
-    html+=`<section><div class="hsa">
-      <h3>HSA — the healthcare sleeve <span class="amt">${fmt(total)}</span></h3>
-      <p class="muted" style="margin:2px 0 0;font-size:.9rem;">Kept separate from spendable income — its own job is pre-funding Medicare.</p>
-      <ul>
-        <li>Holds: <strong>${list}</strong>.</li>
-        <li>Pays <strong>Medicare Part B, Part D, and Advantage premiums tax-free</strong> after 65 (not Medigap), and reimburses any qualified medical expense tax-free, anytime.</li>
-        <li>Excluded from the income and yield figures above, since the funds aren't generally available for daily spending until 65.</li>
-      </ul></div></section>`;
-  }
 
   /* whole portfolio + risk */
   const grand=d.tickers.reduce((s,t2)=>s+d.agg[t2],0);
@@ -866,7 +941,7 @@ function renderPlanBody(d){
 }
 
 /* ---------- mutations ---------- */
-function render(){ buildEditor(); refresh(); }
+function render(){ buildEditor(); buildAltIncome(); refresh(); }
 
 function applyPreset(id){
   const p=PRESETS[id]; if(!p) return;
@@ -884,6 +959,7 @@ function resetState(){
   state.total=0; state.taxRate=0; state.qualifiedRate=0; state.monthlySpending=0;
   state.activePreset=null; state.presetNoteDismissed=null;
   state.accountTargets={taxable:0,traditional:0,roth:0,hsa:0};
+  state.altIncome=[];
   state.buckets.forEach(b=>{ b.allocValue=0; b.holdings=[]; });
   try{ localStorage.removeItem(STORAGE_KEY); }catch(e){}
 }
@@ -907,6 +983,7 @@ function importFromFile(file){
       state.presetNoteDismissed=(data.presetNoteDismissed && PRESETS[data.presetNoteDismissed])?data.presetNoteDismissed:null;
       const at=(data.accountTargets && typeof data.accountTargets==="object")?data.accountTargets:{};
       state.accountTargets={ taxable:Number(at.taxable)||0, traditional:Number(at.traditional)||0, roth:Number(at.roth)||0, hsa:Number(at.hsa)||0 };
+      state.altIncome=Array.isArray(data.altIncome)?data.altIncome.map(s=>({label:String(s.label||""),annual:Number(s.annual)||0,taxType:["taxfree","ordinary","partial"].includes(s.taxType)?s.taxType:"ordinary",taxablePct:Number(s.taxablePct)||85})):[];
       state.buckets=data.buckets.map(b=>({
         id:b.id,name:(b.id==="dividend"&&b.name==="Dividend")?"Income":b.name,desc:b.desc,allocMode:b.allocMode,allocValue:Number(b.allocValue)||0,
         holdings:(b.holdings||[]).map(h=>({
@@ -935,6 +1012,15 @@ document.addEventListener("input",e=>{
   }
   const acctTarget=t.dataset.accountTarget;
   if(acctTarget){ state.accountTargets[acctTarget]=parseInputValue(t); refresh(); return; }
+
+  const altIdx=t.dataset.alt;
+  if(altIdx!=null){
+    const s=state.altIncome[+altIdx]; if(!s) return;
+    const f=t.dataset.field;
+    if(f==="taxType"){ s.taxType=t.value; render(); return; } // rebuild to toggle % cell
+    s[f]=parseInputValue(t);
+    refresh(); return;
+  }
 
   const bIdx=t.dataset.bucket;
   if(bIdx==null) return;
@@ -975,6 +1061,16 @@ document.addEventListener("click",e=>{
     else applyPreset(id);
     return;
   }
+  if(e.target.id==="addAlt"){
+    state.altIncome.push({label:"",annual:0,taxType:"ordinary",taxablePct:85});
+    render();
+    return;
+  }
+  if(e.target.dataset && e.target.dataset.altDel!=null){
+    state.altIncome.splice(+e.target.dataset.altDel,1);
+    render();
+    return;
+  }
   if(e.target.matches("button.add")){
     const bIdx=+e.target.dataset.addBucket;
     state.buckets[bIdx].holdings.push({ticker:"",amount:0,yield:0,account:"taxable",incomeType:"ordinary"});
@@ -990,6 +1086,57 @@ document.addEventListener("click",e=>{
 });
 
 $("importFile").addEventListener("change",e=>{ const f=e.target.files && e.target.files[0]; if(f) importFromFile(f); e.target.value=""; });
+
+// Drag-to-reorder holdings within a bucket (native HTML5 DnD, delegated)
+let _dragRow=null;
+document.addEventListener("dragstart",e=>{
+  const grip=e.target.closest && e.target.closest(".grip");
+  if(!grip){ return; }
+  const row=grip.closest("tr");
+  if(!row){ return; }
+  _dragRow=row;
+  row.classList.add("dragging");
+  e.dataTransfer.effectAllowed="move";
+  try{ e.dataTransfer.setData("text/plain",""); }catch(_){}
+});
+document.addEventListener("dragover",e=>{
+  if(!_dragRow) return;
+  const row=e.target.closest && e.target.closest("tr");
+  if(!row || row===_dragRow) return;
+  if(row.dataset.bucketIdx!==_dragRow.dataset.bucketIdx) return; // same bucket only
+  e.preventDefault();
+  const r=row.getBoundingClientRect();
+  const below=e.clientY > r.top + r.height/2;
+  document.querySelectorAll("tr.drop-above,tr.drop-below").forEach(x=>x.classList.remove("drop-above","drop-below"));
+  row.classList.add(below?"drop-below":"drop-above");
+});
+document.addEventListener("drop",e=>{
+  if(!_dragRow) return;
+  const row=e.target.closest && e.target.closest("tr");
+  if(row && row!==_dragRow && row.dataset.bucketIdx===_dragRow.dataset.bucketIdx){
+    e.preventDefault();
+    const bIdx=+_dragRow.dataset.bucketIdx;
+    const from=+_dragRow.dataset.rowIdx;
+    let to=+row.dataset.rowIdx;
+    const r=row.getBoundingClientRect();
+    const below=e.clientY > r.top + r.height/2;
+    const hs=state.buckets[bIdx].holdings;
+    const [moved]=hs.splice(from,1);
+    // recompute target index after removal
+    if(from<to) to-=1;
+    if(below) to+=1;
+    to=Math.max(0,Math.min(hs.length,to));
+    hs.splice(to,0,moved);
+    render();
+  }
+  cleanupDrag();
+});
+document.addEventListener("dragend",cleanupDrag);
+function cleanupDrag(){
+  if(_dragRow) _dragRow.classList.remove("dragging");
+  document.querySelectorAll("tr.drop-above,tr.drop-below").forEach(x=>x.classList.remove("drop-above","drop-below"));
+  _dragRow=null;
+}
 
 // Doughnut hover tooltip — works for any chart with .seg segments + a .chart-tip
 // (delegated; plan re-renders often). Rect/size cached per segment to avoid
